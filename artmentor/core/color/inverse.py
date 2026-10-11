@@ -108,21 +108,25 @@ class RatioSearchMixer(PigmentMixer):
     ) -> None:
         self.extra_component_penalty = extra_component_penalty
         self.ratio_penalty = ratio_penalty
+        # Candidate recipes and their predicted colors depend only on the palette,
+        # not on the target. Solving a whole pattern means many targets against
+        # one palette, so this is built once and reused.
+        self._prepared: dict[tuple, tuple[list[_Candidate], np.ndarray, np.ndarray]] = {}
 
-    def solve(
-        self,
-        target: LabColor,
-        palette: list[Paint],
-        max_components: int = 3,
-    ) -> MixRecipe:
-        if not palette:
-            raise ValueError("palette is empty")
-        if max_components < 1:
-            raise ValueError("max_components must be at least 1")
-        max_components = min(max_components, len(palette), 3)
+    def _prepare(
+        self, palette: list[Paint], max_components: int
+    ) -> tuple[list[_Candidate], np.ndarray, np.ndarray]:
+        """Enumerate every recipe for this palette and predict each one's color."""
+        key = (
+            tuple((p.id, p.lab.L, p.lab.a, p.lab.b, p.tinting_strength) for p in palette),
+            max_components,
+        )
+        cached = self._prepared.get(key)
+        if cached is not None:
+            return cached
 
         # Spectra are cached per color, so this costs one solve per distinct
-        # paint on the first call and nothing afterwards.
+        # paint the first time and nothing afterwards.
         ks_per_paint = np.stack([reflectance_to_ks(paint_reflectance(p)) for p in palette])
         strengths = np.array([p.tinting_strength for p in palette], dtype=np.float64)
 
@@ -144,21 +148,14 @@ class RatioSearchMixer(PigmentMixer):
                 weights[row, index] = part * strengths[index]
         weights /= weights.sum(axis=1, keepdims=True)
 
-        mixed_ks = weights @ ks_per_paint                  # (N, wavelengths)
-        reflectance = ks_to_reflectance(mixed_ks)
-        xyz = reflectance_to_xyz(reflectance)
-        srgb = np.clip(colour.XYZ_to_sRGB(xyz), 0.0, 1.0)
+        reflectance = ks_to_reflectance(weights @ ks_per_paint)
+        srgb = np.clip(colour.XYZ_to_sRGB(reflectance_to_xyz(reflectance)), 0.0, 1.0)
 
         # Round to 8-bit before measuring. The learner sees a mixed paint, and
         # the engine's own forward prediction is 8-bit, so scoring against a
         # higher-precision value would report an accuracy that does not exist.
         srgb_8bit = np.round(srgb * 255.0) / 255.0
         lab = _skcolor.rgb2lab(srgb_8bit.reshape(-1, 1, 3)).reshape(-1, 3)
-
-        target_lab = np.broadcast_to(target.as_array(), lab.shape)
-        distances = np.asarray(
-            colour.difference.delta_E_CIE2000(lab, target_lab), dtype=np.float64
-        )
 
         complexity = np.array(
             [
@@ -167,6 +164,28 @@ class RatioSearchMixer(PigmentMixer):
                 for c in candidates
             ],
             dtype=np.float64,
+        )
+
+        self._prepared[key] = (candidates, lab, complexity)
+        return candidates, lab, complexity
+
+    def solve(
+        self,
+        target: LabColor,
+        palette: list[Paint],
+        max_components: int = 3,
+    ) -> MixRecipe:
+        if not palette:
+            raise ValueError("palette is empty")
+        if max_components < 1:
+            raise ValueError("max_components must be at least 1")
+        max_components = min(max_components, len(palette), 3)
+
+        candidates, lab, complexity = self._prepare(palette, max_components)
+
+        target_lab = np.broadcast_to(target.as_array(), lab.shape)
+        distances = np.asarray(
+            colour.difference.delta_E_CIE2000(lab, target_lab), dtype=np.float64
         )
 
         best = int(np.argmin(distances + complexity))
@@ -181,7 +200,6 @@ class RatioSearchMixer(PigmentMixer):
             # The honest accuracy of the chosen recipe, with no penalty folded in.
             delta_e=float(distances[best]),
         )
-
 
 def solve_mix(
     target: LabColor, palette: list[Paint], max_components: int = 3
