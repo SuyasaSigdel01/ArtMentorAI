@@ -28,7 +28,7 @@ from typing import Annotated
 
 from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field
-
+from fastapi.responses import RedirectResponse
 from ..core.imaging.loader import (
     MAX_BYTES,
     ImageTooLargeError,
@@ -310,3 +310,7 @@ def shade_check(
         target_hex=target_rgb.hex,
         uniform=result.measured.is_uniform,
     )
+@app.get("/", include_in_schema=False)
+def root() -> RedirectResponse:
+    """Send anyone who opens the bare host to the interactive docs."""
+    return RedirectResponse(url="/docs")
