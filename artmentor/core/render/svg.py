@@ -107,8 +107,15 @@ def render_pattern_svg(
         if not region.contours:
             continue
         fill = palette_hex[region.palette_index] if filled else "#ffffff"
+        # data-n carries the palette number onto every path. The whole reason
+        # this renderer emits SVG rather than a raster is that each region
+        # arrives in the browser as an addressable element; without an
+        # identifier on it, that advantage goes unused. A client can now
+        # highlight every region of one colour, which is what makes a mixing
+        # guide feel connected to the picture.
         body.append(
-            f'<path d="{_path_data(region.contours)}" fill="{fill}" '
+            f'<path data-n="{pattern.palette[region.palette_index].number}" '
+            f'd="{_path_data(region.contours)}" fill="{fill}" '
             f'fill-rule="evenodd" stroke="{stroke}" stroke-width="{stroke_width}"/>'
         )
 

@@ -1,0 +1,1430 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ArtMentor — paint tutor</title>
+    <style>
+         :root {
+            --paper: #f4efe6;
+            --paper-2: #efe8dc;
+            --card: #fffdf9;
+            --ink: #241f1a;
+            --ink-2: #5c534a;
+            --faint: #ddd2c2;
+            --vermilion: #c2552b;
+            --ultramarine: #2f3a86;
+            --sap: #4a7a3a;
+            --ochre: #c69320;
+            --r: 14px;
+            --lift: 0 1px 1px rgba(60, 46, 30, .05), 0 10px 26px -12px rgba(60, 46, 30, .28);
+        }
+        
+        * {
+            box-sizing: border-box
+        }
+        
+        html {
+            scroll-behavior: smooth
+        }
+        
+        body {
+            margin: 0;
+            color: var(--ink);
+            background: var(--paper);
+            font: 15.5px/1.6 "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        /* paper grain — a single inline turbulence, no network, no images */
+        
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            opacity: .5;
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/><feColorMatrix type='saturate' values='0'/></filter><rect width='180' height='180' filter='url(%23n)' opacity='.055'/></svg>");
+        }
+        
+        .sans {
+            font-family: ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif
+        }
+        /* ───────────────────────────── header ───────────────────────────── */
+        
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background: rgba(244, 239, 230, .88);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--faint)
+        }
+        
+        .bar {
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 13px 22px;
+            display: flex;
+            align-items: center;
+            gap: 14px
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            text-decoration: none;
+            color: inherit
+        }
+        
+        .logo svg {
+            display: block
+        }
+        
+        .word {
+            font-size: 19px;
+            font-weight: 600;
+            letter-spacing: -.015em
+        }
+        
+        .word i {
+            font-style: italic;
+            color: var(--vermilion)
+        }
+        
+        nav {
+            margin-left: auto;
+            display: flex;
+            gap: 2px
+        }
+        
+        nav button {
+            position: relative;
+            font: inherit;
+            font-size: 15px;
+            border: 0;
+            background: none;
+            color: var(--ink-2);
+            padding: 6px 14px 10px;
+            cursor: pointer
+        }
+        
+        nav button:hover {
+            color: var(--ink)
+        }
+        
+        nav button[aria-selected="true"] {
+            color: var(--ink)
+        }
+        /* brush-stroke underline instead of a rectangle tab */
+        
+        nav button::after {
+            content: "";
+            position: absolute;
+            left: 10px;
+            right: 10px;
+            bottom: 2px;
+            height: 7px;
+            background: var(--vermilion);
+            -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 10' preserveAspectRatio='none'><path d='M2 6c18-4 36 2 56-1s40-4 60 1c-16 5-34 1-56 3S16 4 2 6z'/></svg>") no-repeat center/100% 100%;
+            mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 10' preserveAspectRatio='none'><path d='M2 6c18-4 36 2 56-1s40-4 60 1c-16 5-34 1-56 3S16 4 2 6z'/></svg>") no-repeat center/100% 100%;
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform .28s cubic-bezier(.3, 1.2, .5, 1)
+        }
+        
+        nav button[aria-selected="true"]::after {
+            transform: scaleX(1)
+        }
+        
+        main {
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 34px 22px 90px;
+            position: relative;
+            z-index: 1
+        }
+        
+        .panel[hidden] {
+            display: none
+        }
+        /* ───────────────────────────── type ───────────────────────────── */
+        
+        h1 {
+            font-size: clamp(30px, 4.4vw, 44px);
+            line-height: 1.1;
+            letter-spacing: -.022em;
+            margin: 0 0 12px;
+            font-weight: 600
+        }
+        
+        h1 em {
+            font-style: italic;
+            color: var(--vermilion)
+        }
+        
+        .lede {
+            color: var(--ink-2);
+            max-width: 56ch;
+            margin: 0 0 30px;
+            font-size: 17px
+        }
+        
+        h2.sec {
+            font: 600 12px/1 ui-sans-serif, system-ui, sans-serif;
+            letter-spacing: .14em;
+            text-transform: uppercase;
+            color: var(--ink-2);
+            margin: 0 0 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px
+        }
+        
+        h2.sec::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: var(--faint)
+        }
+        
+        .step {
+            display: inline-grid;
+            place-items: center;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: var(--ink);
+            color: var(--paper);
+            font: 600 11px/1 ui-sans-serif, sans-serif;
+            flex: none
+        }
+        /* ───────────────────────────── surfaces ───────────────────────────── */
+        
+        .sheet {
+            background: var(--card);
+            border: 1px solid var(--faint);
+            border-radius: var(--r);
+            padding: 22px;
+            box-shadow: var(--lift);
+            position: relative
+        }
+        
+        .split {
+            display: grid;
+            grid-template-columns: minmax(0, 340px) minmax(0, 1fr);
+            gap: 24px;
+            align-items: start
+        }
+        
+        @media (max-width:860px) {
+            .split {
+                grid-template-columns: 1fr
+            }
+        }
+        /* ───────────────────────────── palette ───────────────────────────── */
+        
+        .dabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px 10px;
+            margin-top: 4px
+        }
+        
+        .dab {
+            position: relative;
+            width: 58px;
+            text-align: center;
+            cursor: pointer;
+            border: 0;
+            background: none;
+            padding: 0;
+            font: inherit;
+            transition: transform .18s cubic-bezier(.3, 1.4, .5, 1)
+        }
+        
+        .dab:hover {
+            transform: translateY(-3px) rotate(-2deg)
+        }
+        
+        .dab .blob {
+            display: block;
+            /* a span is inline: without this, width/height do nothing */
+            width: 44px;
+            height: 40px;
+            margin: 0 auto;
+            position: relative;
+            border-radius: 52% 48% 43% 57% / 56% 62% 38% 44%;
+            box-shadow: inset -3px -5px 9px rgba(0, 0, 0, .26), inset 3px 4px 7px rgba(255, 255, 255, .34), 0 3px 6px -2px rgba(60, 46, 30, .4);
+            transition: filter .2s, opacity .2s, box-shadow .2s;
+        }
+        
+        .dab .blob::after {
+            content: "";
+            position: absolute;
+            left: 22%;
+            top: 16%;
+            width: 30%;
+            height: 22%;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, .5);
+            filter: blur(1.4px)
+        }
+        
+        .dab .nm {
+            display: block;
+            margin-top: 5px;
+            font: 400 10.5px/1.25 ui-sans-serif, sans-serif;
+            color: var(--ink-2)
+        }
+        
+        .dab[aria-pressed="false"] .blob {
+            filter: grayscale(.85);
+            opacity: .3;
+            box-shadow: none
+        }
+        
+        .dab[aria-pressed="false"] .nm {
+            opacity: .45;
+            text-decoration: line-through
+        }
+        
+        .dab .tick {
+            position: absolute;
+            top: -3px;
+            right: -1px;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: var(--ink);
+            color: var(--paper);
+            font: 700 9px/15px ui-sans-serif, sans-serif;
+            opacity: 0;
+            transition: .2s
+        }
+        
+        .dab[aria-pressed="true"] .tick {
+            opacity: 1
+        }
+        /* ───────────────────────────── controls ───────────────────────────── */
+        
+        .drop {
+            border: 2px dashed var(--faint);
+            border-radius: var(--r);
+            padding: 30px 16px;
+            text-align: center;
+            cursor: pointer;
+            background: #fdfbf7;
+            transition: .18s
+        }
+        
+        .drop:hover,
+        .drop.over {
+            border-color: var(--vermilion);
+            background: #fbf1ec;
+            transform: rotate(-.4deg)
+        }
+        
+        .drop.has {
+            border-style: solid;
+            border-color: var(--sap);
+            background: #f3f7f1;
+            transform: none
+        }
+        
+        .drop .ic {
+            line-height: 0;
+            margin-bottom: 9px;
+            opacity: .45;
+            color: var(--ink-2)
+        }
+        
+        .drop.has .ic {
+            opacity: 1
+        }
+        
+        .drop b {
+            display: block;
+            font-weight: 600
+        }
+        
+        .drop small {
+            color: var(--ink-2);
+            font-family: ui-sans-serif, sans-serif;
+            font-size: 12.5px
+        }
+        
+        input[type=file] {
+            display: none
+        }
+        
+        .knob {
+            margin-top: 20px
+        }
+        
+        .knob .lab {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            font: 500 12.5px/1 ui-sans-serif, sans-serif;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            color: var(--ink-2)
+        }
+        
+        .knob .val {
+            font-family: inherit;
+            font-size: 17px;
+            font-weight: 600;
+            text-transform: none;
+            letter-spacing: 0;
+            color: var(--ink);
+            font-variant-numeric: tabular-nums
+        }
+        
+        input[type=range] {
+            width: 100%;
+            margin-top: 9px;
+            accent-color: var(--vermilion);
+            cursor: pointer
+        }
+        
+        .brush {
+            display: block;
+            width: 100%;
+            margin-top: 22px;
+            cursor: pointer;
+            border: 0;
+            padding: 13px 18px;
+            font: 600 15px/1 ui-sans-serif, sans-serif;
+            color: #fff8f0;
+            background: var(--ink);
+            border-radius: 3px 11px 4px 12px / 11px 4px 12px 3px;
+            transition: .2s;
+            letter-spacing: .01em
+        }
+        
+        .brush:hover:not(:disabled) {
+            background: var(--vermilion);
+            transform: rotate(-.5deg) scale(1.012)
+        }
+        
+        .brush:active:not(:disabled) {
+            transform: scale(.985)
+        }
+        
+        .brush:disabled {
+            opacity: .32;
+            cursor: default
+        }
+        
+        .ghost {
+            background: none;
+            color: var(--ink-2);
+            border: 1px solid var(--faint);
+            font-size: 13px;
+            padding: 6px 13px;
+            border-radius: 3px 9px 4px 10px / 9px 4px 10px 3px;
+            cursor: pointer;
+            font-family: ui-sans-serif, sans-serif;
+            transition: .18s
+        }
+        
+        .ghost:hover {
+            border-color: var(--ink);
+            color: var(--ink)
+        }
+        
+        .ghost[aria-pressed="true"] {
+            background: var(--ink);
+            color: var(--paper);
+            border-color: var(--ink)
+        }
+        /* ───────────────────────────── empties ───────────────────────────── */
+        
+        .empty {
+            text-align: center;
+            padding: 70px 24px;
+            color: var(--ink-2)
+        }
+        
+        .empty .frame {
+            width: 112px;
+            height: 112px;
+            margin: 0 auto 16px;
+            border: 1.5px solid var(--faint);
+            border-radius: 3px;
+            display: grid;
+            place-items: center;
+            transform: rotate(-2deg);
+            background: #fdfbf7
+        }
+        
+        .empty p {
+            margin: 0;
+            font-style: italic
+        }
+        /* ───────────────────────────── pattern view ───────────────────────────── */
+        
+        .canvas {
+            background: var(--card);
+            border: 1px solid var(--faint);
+            border-radius: var(--r);
+            padding: 16px;
+            box-shadow: var(--lift);
+            /* Sticky so the painting stays on screen while the recipe list scrolls past.
+     Without this the highlight-on-hover fires against a canvas nobody can see,
+     which makes the single best interaction in the app invisible. */
+            position: sticky;
+            top: 66px;
+            z-index: 2
+        }
+        
+        .canvas .mat {
+            display: flex;
+            justify-content: center
+        }
+        
+        .canvas svg {
+            max-height: 56vh;
+            width: auto;
+            max-width: 100%
+        }
+        
+        .canvas .mat {
+            background: #fff;
+            border: 1px solid var(--faint);
+            padding: 10px;
+            border-radius: 4px
+        }
+        
+        .canvas svg {
+            width: 100%;
+            height: auto;
+            display: block
+        }
+        /* the interaction the SVG format was chosen for */
+        
+        .canvas svg path {
+            transition: fill .18s ease, opacity .18s ease
+        }
+        
+        .canvas.focusing svg path {
+            opacity: .22
+        }
+        
+        .canvas.focusing svg path.lit {
+            opacity: 1;
+            fill: var(--hl) !important;
+            stroke: #2b2520;
+            stroke-width: 1.1
+        }
+        
+        .canvas.focusing svg text {
+            opacity: .2
+        }
+        
+        .toolbar {
+            display: flex;
+            gap: 7px;
+            align-items: center;
+            margin-bottom: 13px;
+            flex-wrap: wrap
+        }
+        
+        .counts {
+            display: flex;
+            gap: 26px;
+            margin-top: 14px;
+            padding-top: 13px;
+            flex-wrap: wrap;
+            border-top: 1px solid var(--faint)
+        }
+        
+        .counts div b {
+            display: block;
+            font-size: 21px;
+            letter-spacing: -.02em;
+            font-variant-numeric: tabular-nums
+        }
+        
+        .counts div span {
+            font: 400 11.5px/1 ui-sans-serif, sans-serif;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: var(--ink-2)
+        }
+        /* ───────────────────────────── recipes ───────────────────────────── */
+        
+        .recipes {
+            list-style: none;
+            margin: 0;
+            padding: 0
+        }
+        
+        .rx {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: 14px;
+            align-items: center;
+            padding: 12px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background .16s, transform .16s
+        }
+        
+        .rx+.rx {
+            border-top: 1px solid var(--faint)
+        }
+        
+        .rx:hover {
+            background: var(--paper-2);
+            transform: translateX(3px)
+        }
+        
+        .rx .chip {
+            width: 36px;
+            height: 34px;
+            border-radius: 48% 52% 45% 55% / 55% 48% 52% 45%;
+            display: grid;
+            place-items: center;
+            font: 700 13px/1 ui-sans-serif, sans-serif;
+            flex: none;
+            box-shadow: inset -2px -3px 6px rgba(0, 0, 0, .2), inset 2px 2px 4px rgba(255, 255, 255, .3)
+        }
+        
+        .rx .how {
+            font-size: 14.5px
+        }
+        
+        .rx .how em {
+            font-style: normal;
+            color: var(--ink-2)
+        }
+        
+        .rx .meta {
+            text-align: right;
+            white-space: nowrap
+        }
+        
+        .rx .pct {
+            font-variant-numeric: tabular-nums;
+            font-size: 13px;
+            color: var(--ink-2)
+        }
+        
+        .flag {
+            display: inline-block;
+            font: 600 10px/1 ui-sans-serif, sans-serif;
+            letter-spacing: .07em;
+            text-transform: uppercase;
+            padding: 3px 7px;
+            border-radius: 3px;
+            background: #eaf1ea;
+            color: var(--sap)
+        }
+        
+        .flag.approx {
+            background: #f8eedb;
+            color: #8a6410
+        }
+        /* ───────────────────────────── mixing bench ───────────────────────────── */
+        
+        .bench {
+            margin-top: 30px
+        }
+        
+        .bench .inner {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 22px;
+            align-items: center
+        }
+        
+        @media (max-width:700px) {
+            .bench .inner {
+                grid-template-columns: 1fr;
+                text-align: center
+            }
+        }
+        
+        .jar {
+            text-align: center
+        }
+        
+        .jar select {
+            font: inherit;
+            font-size: 14px;
+            padding: 7px 9px;
+            border: 1px solid var(--faint);
+            border-radius: 7px;
+            background: var(--card);
+            color: var(--ink);
+            max-width: 170px;
+            cursor: pointer
+        }
+        
+        .jar .blob {
+            width: 62px;
+            height: 56px;
+            margin: 0 auto 10px;
+            border-radius: 52% 48% 43% 57% / 56% 62% 38% 44%;
+            box-shadow: inset -4px -6px 11px rgba(0, 0, 0, .26), inset 4px 5px 8px rgba(255, 255, 255, .32), 0 4px 9px -3px rgba(60, 46, 30, .4);
+            transition: background .3s
+        }
+        
+        .mixres {
+            text-align: center
+        }
+        
+        .mixres .pool {
+            width: 104px;
+            height: 94px;
+            margin: 0 auto 12px;
+            border-radius: 49% 51% 44% 56% / 57% 60% 40% 43%;
+            box-shadow: inset -5px -8px 16px rgba(0, 0, 0, .24), inset 5px 6px 11px rgba(255, 255, 255, .3), 0 7px 16px -6px rgba(60, 46, 30, .45);
+            transition: background .35s
+        }
+        
+        .mixres .pool.pulse {
+            animation: squish .4s cubic-bezier(.3, 1.5, .5, 1)
+        }
+        
+        @keyframes squish {
+            40% {
+                transform: scale(1.07, .93) rotate(-2deg)
+            }
+        }
+        
+        .vs {
+            font-style: italic;
+            color: var(--ink-2);
+            font-size: 14px
+        }
+        
+        .compare {
+            display: flex;
+            gap: 18px;
+            justify-content: center;
+            margin-top: 20px;
+            padding-top: 18px;
+            border-top: 1px solid var(--faint)
+        }
+        
+        .compare div {
+            text-align: center
+        }
+        
+        .compare .sq {
+            width: 52px;
+            height: 52px;
+            border-radius: 7px;
+            margin: 0 auto 7px;
+            border: 1px solid rgba(0, 0, 0, .1)
+        }
+        
+        .compare small {
+            font: 400 11px/1.3 ui-sans-serif, sans-serif;
+            color: var(--ink-2);
+            display: block
+        }
+        /* ───────────────────────────── verdict ───────────────────────────── */
+        
+        .verdict {
+            text-align: center;
+            padding: 12px 0 0
+        }
+        
+        .pair {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 0;
+            margin-bottom: 6px
+        }
+        
+        .pair .half {
+            width: 118px;
+            height: 118px;
+            position: relative
+        }
+        
+        .pair .half:first-child {
+            border-radius: 60% 10% 10% 60% / 60% 10% 10% 60%
+        }
+        
+        .pair .half:last-child {
+            border-radius: 10% 60% 60% 10% / 10% 60% 60% 10%
+        }
+        
+        .pair .half span {
+            position: absolute;
+            bottom: -26px;
+            left: 0;
+            right: 0;
+            font: 500 10.5px/1 ui-sans-serif, sans-serif;
+            letter-spacing: .11em;
+            text-transform: uppercase;
+            color: var(--ink-2)
+        }
+        
+        .verdict h3 {
+            font-size: 27px;
+            letter-spacing: -.02em;
+            margin: 44px 0 6px;
+            font-weight: 600
+        }
+        
+        .verdict h3 em {
+            font-style: italic;
+            color: var(--vermilion)
+        }
+        
+        .verdict .say {
+            color: var(--ink-2);
+            max-width: 44ch;
+            margin: 0 auto
+        }
+        
+        .gauge {
+            margin: 26px auto 0;
+            max-width: 420px
+        }
+        
+        .gauge .track {
+            height: 9px;
+            border-radius: 99px;
+            position: relative;
+            background: linear-gradient(90deg, #4a7a3a 0 8%, #8aa14a 8% 20%, #d6a52a 20% 45%, #c2552b 45% 100%)
+        }
+        
+        .gauge .pin {
+            position: absolute;
+            top: -6px;
+            width: 4px;
+            height: 21px;
+            border-radius: 2px;
+            background: var(--ink);
+            box-shadow: 0 0 0 3px var(--card);
+            transition: left .5s cubic-bezier(.3, 1.1, .5, 1)
+        }
+        
+        .gauge .scale {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font: 400 10.5px/1 ui-sans-serif, sans-serif;
+            color: var(--ink-2)
+        }
+        
+        .facts {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 26px;
+            padding-top: 20px;
+            border-top: 1px solid var(--faint);
+            flex-wrap: wrap
+        }
+        
+        .facts div {
+            text-align: center
+        }
+        
+        .facts b {
+            display: block;
+            font-size: 19px;
+            font-variant-numeric: tabular-nums
+        }
+        
+        .facts span {
+            font: 400 10.5px/1 ui-sans-serif, sans-serif;
+            letter-spacing: .09em;
+            text-transform: uppercase;
+            color: var(--ink-2)
+        }
+        
+        .aside {
+            font-style: italic;
+            color: var(--ink-2);
+            font-size: 13.5px;
+            margin-top: 16px;
+            line-height: 1.55
+        }
+        
+        .aside a {
+            color: var(--vermilion)
+        }
+        
+        .err {
+            background: #fbeee9;
+            border: 1px solid #e8c3b4;
+            color: #8e3516;
+            padding: 13px 15px;
+            border-radius: 9px;
+            font-size: 14px
+        }
+        
+        .load {
+            display: inline-block;
+            width: 13px;
+            height: 13px;
+            border: 2px solid rgba(255, 248, 240, .3);
+            border-top-color: #fff8f0;
+            border-radius: 50%;
+            animation: sp .7s linear infinite;
+            vertical-align: -2px;
+            margin-right: 8px
+        }
+        
+        @keyframes sp {
+            to {
+                transform: rotate(360deg)
+            }
+        }
+        
+        .fade {
+            animation: fade .45s ease both
+        }
+        
+        @keyframes fade {
+            from {
+                opacity: 0;
+                transform: translateY(9px)
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="bar">
+            <a class="logo" href="#">
+                <svg width="27" height="27" viewBox="0 0 32 32" aria-hidden="true">
+        <path d="M16 3C8.8 3 3 8.4 3 15c0 6.3 5.2 10.6 11.4 10.6 1.7 0 2.6-1 2.6-2.2 0-1.1-.8-1.6-.8-2.6 0-1.2 1-2.1 2.4-2.1h2.1c4 0 6.3-2.6 6.3-6.6C27 7.3 22.3 3 16 3z"
+              fill="none" stroke="#241f1a" stroke-width="1.7"/>
+        <circle cx="9.5" cy="13" r="2.1" fill="#2f3a86"/>
+        <circle cx="15" cy="9.2" r="2.1" fill="#c2552b"/>
+        <circle cx="20.8" cy="12" r="2.1" fill="#c69320"/>
+        <circle cx="11.6" cy="19.3" r="2.1" fill="#4a7a3a"/>
+      </svg>
+                <span class="word">Art<i>Mentor</i></span>
+            </a>
+            <nav>
+                <button id="tab-pattern" aria-selected="true">Make a pattern</button>
+                <button id="tab-check" aria-selected="false">Check a mix</button>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+
+        <!-- ══════════════════════════ PATTERN ══════════════════════════ -->
+        <section class="panel" id="panel-pattern">
+            <h1>Turn a photograph into something <em>paintable</em>.</h1>
+            <p class="lede">
+                Every colour gets a number, and every number gets a recipe — mixed from the paints already on your table.
+            </p>
+
+            <div class="split">
+                <div>
+                    <div class="sheet">
+                        <h2 class="sec"><span class="step">1</span> Your photograph</h2>
+                        <div class="drop" id="drop-p">
+                            <div class="ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><rect x="3" y="4"
+          width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="M4 17l5-5 4 4 3-3 4 4"/></svg></div>
+                            <b>Drop an image here</b>
+                            <small>or click to browse</small>
+                        </div>
+                        <input type="file" id="file-p" accept="image/jpeg,image/png,image/webp">
+
+                        <div class="knob">
+                            <div class="lab"><span>Colours</span><span class="val" id="v-colors">12</span></div>
+                            <input type="range" id="colors" min="4" max="24" value="12">
+                        </div>
+                        <div class="knob">
+                            <div class="lab"><span>Detail</span><span class="val" id="v-detail">medium</span></div>
+                            <input type="range" id="detail" min="0" max="2" value="1">
+                        </div>
+
+                        <button class="brush" id="run-p" disabled>Make my pattern</button>
+                    </div>
+
+                    <div class="sheet" style="margin-top:20px">
+                        <h2 class="sec"><span class="step">2</span> On your palette</h2>
+                        <div class="dabs" id="dabs"></div>
+                        <button class="ghost" id="all" style="margin-top:16px">Deselect all</button>
+                        <p class="aside">Tap a dab to put it away. Recipes only use what's left out.</p>
+                    </div>
+                </div>
+
+                <div id="out-p">
+                    <div class="empty">
+                        <div class="frame">
+                            <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#c9bda9" stroke-width="1.1">
+            <path d="M3 17l5-6 4 4 3-3 6 7"/><circle cx="8" cy="7.5" r="2"/>
+          </svg>
+                        </div>
+                        <p>Nothing on the easel yet.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─────────── mixing bench ─────────── -->
+            <div class="sheet bench">
+                <h2 class="sec">The mixing bench</h2>
+                <div class="inner">
+                    <div class="jar">
+                        <div class="blob" id="blob-a"></div>
+                        <select id="sel-a"></select>
+                    </div>
+                    <div class="mixres">
+                        <div class="pool" id="pool"></div>
+                        <div class="vs" id="ratio-txt">1 : 1</div>
+                        <input type="range" id="ratio" min="1" max="9" value="5" style="max-width:190px">
+                    </div>
+                    <div class="jar">
+                        <div class="blob" id="blob-b"></div>
+                        <select id="sel-b"></select>
+                    </div>
+                </div>
+                <div class="compare">
+                    <div>
+                        <div class="sq" id="sq-real"></div><small>real paint<br>(what you'd get)</small></div>
+                    <div>
+                        <div class="sq" id="sq-naive"></div><small>screen blending<br>(what most apps do)</small></div>
+                </div>
+                <p class="aside" style="text-align:center">
+                    Blue and yellow make green on a palette and grey on a screen. Drag the slider — the left square is pigment, the right is arithmetic.
+                </p>
+            </div>
+        </section>
+
+        <!-- ══════════════════════════ CHECK ══════════════════════════ -->
+        <section class="panel" id="panel-check" hidden>
+            <h1>Mixed something. Is it <em>right</em>?</h1>
+            <p class="lede">
+                Photograph the paint and find out how close you got — and which way to push it.
+            </p>
+
+            <div class="split">
+                <div class="sheet">
+                    <h2 class="sec"><span class="step">1</span> Photograph the paint</h2>
+                    <div class="drop" id="drop-c">
+                        <div class="ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M12 3C7 3 3 6.6 3 11
+          c0 4.3 3.6 7.2 7.8 7.2 1.2 0 1.8-.7 1.8-1.5 0-.8-.6-1.1-.6-1.8 0-.8.7-1.4 1.7-1.4h1.4
+          c2.8 0 4.4-1.8 4.4-4.5C19.5 6 16.3 3 12 3z"/><circle cx="7.6" cy="10.2" r="1.1" fill="currentColor"
+          stroke="none"/><circle cx="11.5" cy="7.6" r="1.1" fill="currentColor" stroke="none"/>
+          <circle cx="15.4" cy="9.6" r="1.1" fill="currentColor" stroke="none"/></svg></div>
+                        <b>Drop your photo</b>
+                        <small>paint in the middle of the frame</small>
+                    </div>
+                    <input type="file" id="file-c" accept="image/jpeg,image/png,image/webp">
+
+                    <h2 class="sec" style="margin-top:26px"><span class="step">2</span> Aiming for</h2>
+                    <div style="display:flex; align-items:center; gap:12px">
+                        <div class="blob" id="blob-t" style="width:52px;height:48px;margin:0"></div>
+                        <input type="color" id="target" value="#4a7a3a" style="width:42px;height:34px;border:1px solid var(--faint);border-radius:7px;
+                      background:none;cursor:pointer;padding:0">
+                        <input type="text" id="target-hex" value="#4a7a3a" spellcheck="false" style="font:inherit;font-size:14px;padding:7px 9px;border:1px solid var(--faint);
+                      border-radius:7px;width:102px;background:var(--card);color:var(--ink)">
+                    </div>
+
+                    <label style="display:flex;gap:9px;margin-top:20px;font-size:14px;cursor:pointer;align-items:flex-start">
+        <input type="checkbox" id="has-card" checked style="accent-color:var(--vermilion);margin-top:4px">
+        <span>The grey card is along the top of my photo</span>
+      </label>
+
+                    <button class="brush" id="run-c" disabled>Read this colour</button>
+
+                    <p class="aside">
+                        Room light shifts colour more than the difference you're asking about, so without the card it's a guess. <a href="/calibration-card.svg" target="_blank">Print the card</a> — in greyscale, or it won't work.
+                    </p>
+                </div>
+
+                <div id="out-c">
+                    <div class="empty">
+                        <div class="frame">
+                            <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#c9bda9" stroke-width="1.1">
+            <circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 010 16z" fill="#e4d8c4" stroke="none"/>
+          </svg>
+                        </div>
+                        <p>No verdict yet.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        const $ = id => document.getElementById(id);
+        const DETAIL = [{
+            t: 'coarse',
+            a: 220
+        }, {
+            t: 'medium',
+            a: 90
+        }, {
+            t: 'fine',
+            a: 35
+        }];
+        let fileP = null,
+            fileC = null,
+            paints = [],
+            svgCache = {
+                outline: null,
+                filled: null
+            };
+
+        /* ───────── tabs ───────── */
+        const show = n => {
+            $('panel-pattern').hidden = n !== 'pattern';
+            $('panel-check').hidden = n !== 'check';
+            $('tab-pattern').setAttribute('aria-selected', n === 'pattern');
+            $('tab-check').setAttribute('aria-selected', n === 'check');
+        };
+        $('tab-pattern').onclick = () => show('pattern');
+        $('tab-check').onclick = () => show('check');
+
+        /* ───────── file pickers ───────── */
+        function dropzone(dropId, inputId, done) {
+            const d = $(dropId),
+                i = $(inputId);
+            d.onclick = () => i.click();
+            i.onchange = () => i.files[0] && done(i.files[0], d);
+            ['dragenter', 'dragover'].forEach(e => d.addEventListener(e, ev => {
+                ev.preventDefault();
+                d.classList.add('over')
+            }));
+            ['dragleave', 'drop'].forEach(e => d.addEventListener(e, ev => {
+                ev.preventDefault();
+                d.classList.remove('over')
+            }));
+            d.addEventListener('drop', ev => {
+                const f = ev.dataTransfer.files[0];
+                if (f) done(f, d);
+            });
+        }
+        const marked = (f, d) => {
+            d.classList.add('has');
+            d.querySelector('.ic').innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4a7a3a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.5 5.5L20 6"/></svg>';
+            d.querySelector('b').textContent = f.name;
+            d.querySelector('small').textContent = (f.size / 1048576).toFixed(1) + ' MB — click to swap';
+        };
+        dropzone('drop-p', 'file-p', (f, d) => {
+            fileP = f;
+            marked(f, d);
+            $('run-p').disabled = false;
+        });
+        dropzone('drop-c', 'file-c', (f, d) => {
+            fileC = f;
+            marked(f, d);
+            $('run-c').disabled = false;
+        });
+
+        /* ───────── knobs ───────── */
+        $('colors').oninput = e => $('v-colors').textContent = e.target.value;
+        $('detail').oninput = e => $('v-detail').textContent = DETAIL[e.target.value].t;
+        const syncTarget = hex => {
+            $('blob-t').style.background = hex;
+        };
+        $('target').oninput = e => {
+            $('target-hex').value = e.target.value;
+            syncTarget(e.target.value);
+        };
+        $('target-hex').oninput = e => {
+            if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) {
+                $('target').value = e.target.value;
+                syncTarget(e.target.value);
+            }
+        };
+        syncTarget('#4a7a3a');
+
+        /* ───────── the palette ───────── */
+        fetch('/paints').then(r => r.json()).then(list => {
+            paints = list;
+            $('dabs').innerHTML = list.map((p, i) => `
+    <button class="dab" aria-pressed="true" data-id="${p.id}" title="${p.name}"
+            style="transform:rotate(${(i%3-1)*1.6}deg)">
+      <span class="blob" style="background:${p.hex}"></span>
+      <span class="tick">✓</span>
+      <span class="nm">${p.name.replace(/\s*\(.*\)/,'')}</span>
+    </button>`).join('');
+            document.querySelectorAll('.dab').forEach(b => {
+                b.onclick = () => b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') !== 'true');
+            });
+            const opts = list.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+            $('sel-a').innerHTML = opts;
+            $('sel-b').innerHTML = opts;
+            $('sel-a').value = 'phthalo-blue';
+            $('sel-b').value = 'cad-yellow';
+            bench();
+        }).catch(() => {
+            $('dabs').innerHTML = '<div class="err">Can’t reach the API — is the server running?</div>';
+        });
+
+        const chosen = () => [...document.querySelectorAll('.dab[aria-pressed="true"]')].map(b => b.dataset.id);
+        $('all').onclick = () => {
+            const on = chosen().length === 0;
+            document.querySelectorAll('.dab').forEach(b => b.setAttribute('aria-pressed', on));
+            $('all').textContent = on ? 'Deselect all' : 'Select all';
+        };
+
+        /* ───────── mixing bench ───────── */
+        const hexOf = id => (paints.find(p => p.id === id) || {}).hex || '#888';
+        let benchTimer;
+
+        function bench() {
+            const a = $('sel-a').value,
+                b = $('sel-b').value,
+                r = +$('ratio').value;
+            const pa = 10 - r,
+                pb = r;
+            $('blob-a').style.background = hexOf(a);
+            $('blob-b').style.background = hexOf(b);
+            $('ratio-txt').textContent = `${pa} : ${pb}`;
+            $('sq-naive').style.background = average(hexOf(a), hexOf(b), pa, pb);
+            clearTimeout(benchTimer);
+            benchTimer = setTimeout(async() => {
+                try {
+                    const q = new URLSearchParams({
+                        paints: `${a},${b}`,
+                        parts: `${pa},${pb}`
+                    });
+                    const d = await (await fetch('/mix?' + q)).json();
+                    $('pool').style.background = d.hex;
+                    $('sq-real').style.background = d.hex;
+                    $('pool').classList.remove('pulse');
+                    void $('pool').offsetWidth;
+                    $('pool').classList.add('pulse');
+                } catch {}
+            }, 110);
+        }
+        ['sel-a', 'sel-b', 'ratio'].forEach(id => $(id).oninput = bench);
+
+        function average(h1, h2, w1, w2) {
+            const v = h => [1, 3, 5].map(i => parseInt(h.substr(i, 2), 16));
+            const [a, b] = [v(h1), v(h2)], t = w1 + w2;
+            return '#' + a.map((c, i) => Math.round((c * w1 + b[i] * w2) / t).toString(16).padStart(2, '0')).join('');
+        }
+
+        /* ───────── make a pattern ───────── */
+        $('run-p').onclick = async() => {
+            const btn = $('run-p');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="load"></span>Mixing the palette…';
+            const own = chosen();
+            if (!own.length) {
+                $('out-p').innerHTML = '<div class="err">Leave at least one paint out on the palette.</div>';
+                btn.disabled = false;
+                btn.textContent = 'Make my pattern';
+                return;
+            }
+            const q = new URLSearchParams({
+                colors: $('colors').value,
+                min_region_area: DETAIL[$('detail').value].a,
+                max_dimension: 900
+            });
+            if (own.length < paints.length) q.set('paints', own.join(','));
+            const body = new FormData();
+            body.append('image', fileP);
+            try {
+                const res = await fetch('/patterns?' + q, {
+                    method: 'POST',
+                    body
+                });
+                const d = await res.json();
+                if (!res.ok) throw new Error(d.detail || 'Something went wrong');
+                svgCache = {
+                    outline: d.svg,
+                    filled: null
+                };
+                paint(d);
+            } catch (e) {
+                $('out-p').innerHTML = `<div class="err">${e.message}</div>`;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Make my pattern';
+            }
+        };
+
+        function paint(d) {
+            const rows = d.palette.map(c => `
+    <li class="rx" data-n="${c.number}" data-hex="${c.hex}">
+      <span class="chip" style="background:${c.hex};color:${ink(c.hex)}">${c.number}</span>
+      <span class="how">${(c.instructions||'—').replace(/(\d+ parts?)/g,'<em>$1</em>')}</span>
+      <span class="meta">
+        <span class="flag ${c.achievable===false?'approx':''}">${c.achievable===false?'closest':'spot on'}</span>
+        <div class="pct">${(c.share*100).toFixed(0)}% of the canvas</div>
+      </span>
+    </li>`).join('');
+
+            $('out-p').innerHTML = `
+    <div class="fade">
+      <div class="canvas" id="canvas">
+        <div class="toolbar">
+          <button class="ghost" id="t-out" aria-pressed="true">Outlines</button>
+          <button class="ghost" id="t-fill" aria-pressed="false">Painted</button>
+          <a class="ghost" id="dl" style="margin-left:auto;text-decoration:none">Download SVG</a>
+        </div>
+        <div class="mat" id="mat">${d.svg}</div>
+        <div class="counts">
+          <div><b>${d.colors}</b><span>colours</span></div>
+          <div><b>${d.regions}</b><span>shapes</span></div>
+          <div><b>${d.width}×${d.height}</b><span>pixels</span></div>
+        </div>
+      </div>
+
+      <div class="sheet" style="margin-top:20px">
+        <h2 class="sec">What to mix</h2>
+        <ul class="recipes" id="recipes">${rows}</ul>
+        <p class="aside">
+          Hover a colour to find it in the painting. Work downwards — the biggest
+          areas come first, the way you'd block in a canvas.
+        </p>
+      </div>
+    </div>`;
+
+            $('dl').href = URL.createObjectURL(new Blob([d.svg], {
+                type: 'image/svg+xml'
+            }));
+            $('dl').download = 'pattern.svg';
+            $('t-out').onclick = () => swap('outline');
+            $('t-fill').onclick = () => swap('filled');
+
+            /* the reason this renderer emits SVG: every region is addressable */
+            const canvas = $('canvas');
+            let pinned = null;
+            document.querySelectorAll('.rx').forEach(row => {
+                const light = () => {
+                    canvas.style.setProperty('--hl', row.dataset.hex);
+                    canvas.classList.add('focusing');
+                    canvas.querySelectorAll(`path[data-n="${row.dataset.n}"]`).forEach(p => p.classList.add('lit'));
+                };
+                const dim = () => {
+                    canvas.classList.remove('focusing');
+                    canvas.querySelectorAll('path.lit').forEach(p => p.classList.remove('lit'));
+                };
+                row.addEventListener('mouseenter', () => {
+                    if (!pinned) light();
+                });
+                row.addEventListener('mouseleave', () => {
+                    if (!pinned) dim();
+                });
+                row.addEventListener('focus', () => {
+                    if (!pinned) light();
+                });
+                row.addEventListener('click', () => {
+                    // Hover does not exist on a phone, so a tap pins the highlight instead.
+                    const already = pinned === row;
+                    document.querySelectorAll('.rx').forEach(r => r.style.background = '');
+                    dim();
+                    pinned = null;
+                    if (!already) {
+                        pinned = row;
+                        row.style.background = 'var(--paper-2)';
+                        light();
+                    }
+                });
+                row.tabIndex = 0;
+            });
+        }
+
+        async function swap(which) {
+            $('t-out').setAttribute('aria-pressed', which === 'outline');
+            $('t-fill').setAttribute('aria-pressed', which === 'filled');
+            if (svgCache[which]) {
+                $('mat').innerHTML = svgCache[which];
+                rewire();
+                return;
+            }
+            const q = new URLSearchParams({
+                colors: $('colors').value,
+                min_region_area: DETAIL[$('detail').value].a,
+                max_dimension: 900,
+                include_recipes: 'false',
+                filled: 'true'
+            });
+            const body = new FormData();
+            body.append('image', fileP);
+            const d = await (await fetch('/patterns?' + q, {
+                method: 'POST',
+                body
+            })).json();
+            svgCache.filled = d.svg;
+            $('mat').innerHTML = d.svg;
+            rewire();
+        }
+        const rewire = () => {};
+
+        /* ───────── read a colour ───────── */
+        $('run-c').onclick = async() => {
+            const btn = $('run-c');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="load"></span>Looking…';
+            const body = new FormData();
+            body.append('image', fileC);
+            body.append('target', $('target-hex').value);
+            if ($('has-card').checked) body.append('reference', '0.0,0.0,1.0,0.12');
+            try {
+                const res = await fetch('/shade-check', {
+                    method: 'POST',
+                    body
+                });
+                const d = await res.json();
+                if (!res.ok) throw new Error(d.detail || 'Something went wrong');
+                verdict(d);
+            } catch (e) {
+                $('out-c').innerHTML = `<div class="err">${e.message}</div>`;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Read this colour';
+            }
+        };
+
+        function verdict(d) {
+            // Past the far threshold the engine says restart rather than correct, so a
+            // directional headline would contradict the sentence below it.
+            const head = d.matched ? 'That’s <em>it</em>.' :
+                d.band === 'far' ? 'Not this colour <em>yet</em>.' :
+                cap(d.hint).replace(/(red|yellow|blue|green|white)/, '<em>$1</em>') + '.';
+            const pin = Math.min(100, (d.delta_e / 20) * 100);
+
+            $('out-c').innerHTML = `
+    <div class="sheet fade">
+      <div class="verdict">
+        <div class="pair">
+          <div class="half" style="background:${d.measured_hex}"><span>yours</span></div>
+          <div class="half" style="background:${d.target_hex}"><span>aiming for</span></div>
+        </div>
+        <h3>${head}</h3>
+        <p class="say">${d.message}</p>
+
+        <div class="gauge">
+          <div class="track"><div class="pin" style="left:calc(${pin}% - 2px)"></div></div>
+          <div class="scale"><span>identical</span><span>close</span><span>off</span><span>another colour</span></div>
+        </div>
+
+        <div class="facts">
+          <div><b>${d.delta_e}</b><span>difference</span></div>
+          <div><b>${d.confidence==='calibrated'?'good':'rough'}</b><span>lighting</span></div>
+          <div><b>${d.uniform?'even':'patchy'}</b><span>your mix</span></div>
+        </div>
+      </div>
+    </div>`;
+        }
+
+        /* ───────── small helpers ───────── */
+        function ink(hex) {
+            const n = parseInt(hex.slice(1), 16);
+            return (0.299 * (n >> 16 & 255) + 0.587 * (n >> 8 & 255) + 0.114 * (n & 255)) > 150 ? '#241f1a' : '#fff8f0';
+        }
+        const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+    </script>
+</body>
+
+</html>

@@ -24,11 +24,14 @@ correct but not yet hardened for load.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
-from fastapi.responses import RedirectResponse
+
+from ..core.color.mixing import predict_mix_color
 from ..core.imaging.loader import (
     MAX_BYTES,
     ImageTooLargeError,
@@ -38,6 +41,7 @@ from ..core.imaging.loader import (
 from ..core.paints import STARTER_ACRYLICS, catalog_by_id
 from ..core.pipeline import PIPELINE_VERSION, PatternParams, generate_pattern
 from ..core.recipes import recipes_for_pattern
+from ..core.render.calibration import render_calibration_card_svg
 from ..core.render.svg import render_pattern_svg
 from ..core.swatch import check_shade
 from ..core.types import RGBColor
@@ -90,6 +94,12 @@ class PatternOut(BaseModel):
     pipeline_version: str
     palette: list[PaletteColorOut]
     svg: str
+
+
+class MixOut(BaseModel):
+    hex: str
+    lab: list[float]
+    instructions: str
 
 
 class ShadeCheckOut(BaseModel):
@@ -184,6 +194,26 @@ def _to_pixel_box(box, shape: tuple[int, int]) -> tuple[slice, slice] | None:
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
+_STATIC = Path(__file__).parent / "static"
+
+
+@app.get("/", include_in_schema=False)
+def index() -> FileResponse:
+    """The web app itself."""
+    return FileResponse(_STATIC / "index.html")
+
+
+@app.get("/calibration-card.svg", include_in_schema=False)
+def calibration_card() -> Response:
+    """The printable grey reference card, generated on request."""
+    svg, _ = render_calibration_card_svg()
+    return Response(
+        content=svg,
+        media_type="image/svg+xml",
+        headers={"Content-Disposition": 'inline; filename="artmentor-calibration-card.svg"'},
+    )
+
+
 @app.get("/health")
 def health() -> dict:
     return {"status": "ok", "pipeline_version": PIPELINE_VERSION}
@@ -265,6 +295,38 @@ def create_pattern(
     )
 
 
+@app.get("/mix", response_model=MixOut)
+def mix(
+    paints: Annotated[str, Query(description="Comma-separated paint ids, 1-4")],
+    parts: Annotated[str, Query(description="Comma-separated parts, matching paints")],
+) -> MixOut:
+    """Predict the colour of a mix. Cheap enough to call on every slider move.
+
+    A GET with no body, because this exists so a client can show the result of
+    mixing update as the user drags a ratio — the point is immediacy, and the
+    forward engine answers in well under a millisecond once spectra are cached.
+    """
+    chosen = _resolve_palette(paints)
+    if not 1 <= len(chosen) <= 4:
+        raise HTTPException(status_code=400, detail="Mix between 1 and 4 paints.")
+
+    try:
+        amounts = [float(v) for v in parts.split(",")]
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="parts must be numbers.") from exc
+    if len(amounts) != len(chosen):
+        raise HTTPException(status_code=400, detail="parts must match paints in length.")
+    if any(a < 0 for a in amounts) or sum(amounts) <= 0:
+        raise HTTPException(status_code=400, detail="parts must be non-negative and not all zero.")
+
+    result = predict_mix_color(chosen, amounts)
+    return MixOut(
+        hex=result.hex,
+        lab=[round(result.lab.L, 2), round(result.lab.a, 2), round(result.lab.b, 2)],
+        instructions=result.describe(),
+    )
+
+
 @app.post("/shade-check", response_model=ShadeCheckOut)
 def shade_check(
     image: Annotated[UploadFile, File(description="Photo of the mixed paint")],
@@ -310,7 +372,3 @@ def shade_check(
         target_hex=target_rgb.hex,
         uniform=result.measured.is_uniform,
     )
-@app.get("/", include_in_schema=False)
-def root() -> RedirectResponse:
-    """Send anyone who opens the bare host to the interactive docs."""
-    return RedirectResponse(url="/docs")
