@@ -7,12 +7,22 @@ what will let this layer be swapped for Postgres and object storage on a
 server without touching a single formula.
 """
 
-from .gallery import Attempt, Gallery, GalleryError, Piece, PieceSummary, Progress, Trend
+from .gallery import (
+    Attempt,
+    Gallery,
+    GalleryError,
+    NotFound,
+    Piece,
+    PieceSummary,
+    Progress,
+    Trend,
+)
 
 __all__ = [
     "Attempt",
     "Gallery",
     "GalleryError",
+    "NotFound",
     "Piece",
     "PieceSummary",
     "Progress",

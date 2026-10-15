@@ -4,7 +4,14 @@ Endpoints:
     GET  /health        liveness
     GET  /paints        the paint catalog a client can offer as "what do you own?"
     POST /patterns      image -> numbered pattern, SVG, and mixing recipes
+    POST /grid          image -> grid overlay for the grid drawing method
+    POST /critique      reference + attempt -> fidelity measurements
     POST /shade-check   photo of a mix + target color -> verdict and correction
+    *    /gallery/...   saved pieces, attempts over time, and progress
+
+The gallery routes are the only stateful ones. Everything else is a pure
+function of its request, which is why the rest of this file can be read in any
+order; the gallery section carries its own notes on where its state lives.
 
 Two deliberate limits, both honest rather than hidden:
 
@@ -24,10 +31,13 @@ correct but not yet hardened for load.
 
 from __future__ import annotations
 
+import json
+import os
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
-from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, UploadFile
+from fastapi import Path as PathParam
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 
@@ -37,6 +47,7 @@ from ..core.imaging.loader import (
     MAX_BYTES,
     ImageTooLargeError,
     UnsupportedImageError,
+    encode_image,
     load_image,
 )
 from ..core.paints import STARTER_ACRYLICS, catalog_by_id
@@ -47,6 +58,7 @@ from ..core.render.grid import render_grid_svg
 from ..core.render.svg import render_pattern_svg
 from ..core.swatch import check_shade
 from ..core.types import RGBColor
+from ..store import Attempt, Gallery, GalleryError, NotFound, Piece, Progress
 
 app = FastAPI(
     title="ArtMentorAI",
@@ -138,6 +150,64 @@ class ShadeCheckOut(BaseModel):
     measured_hex: str
     target_hex: str
     uniform: bool
+
+
+class AttemptOut(BaseModel):
+    id: str
+    created_at: str
+    note: str | None
+    message: str
+    next_step: str | None
+    measurements: list[MeasurementOut]
+    image_url: str
+    thumbnail_url: str
+
+
+class PieceSummaryOut(BaseModel):
+    id: str
+    title: str
+    medium: str | None
+    created_at: str
+    updated_at: str = Field(description="When it was last worked on, not when it was created")
+    attempts: int
+    has_pattern: bool
+    image_url: str
+    thumbnail_url: str
+
+
+class PieceOut(BaseModel):
+    id: str
+    title: str
+    medium: str | None
+    created_at: str
+    has_pattern: bool
+    pattern: dict[str, Any] | None
+    image_url: str
+    thumbnail_url: str
+    attempts: list[AttemptOut]
+
+
+class TrendOut(BaseModel):
+    key: str
+    unit: str
+    first: float
+    latest: float
+    change: float
+    improved: bool | None = Field(
+        default=None,
+        description="None where the measure has no agreed better direction, or moved too "
+        "little to call",
+    )
+    description: str
+
+
+class ProgressOut(BaseModel):
+    piece_id: str
+    attempts: int
+    first_at: str
+    latest_at: str
+    summary: str
+    trends: list[TrendOut]
 
 
 # ---------------------------------------------------------------------------
@@ -451,4 +521,269 @@ def shade_check(
         measured_hex=result.measured.rgb.hex,
         target_hex=target_rgb.hex,
         uniform=result.measured.is_uniform,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Gallery — the only stateful part of the API
+# ---------------------------------------------------------------------------
+# Where the gallery lives. One folder holding `gallery.db` and `media/`, chosen
+# by environment variable so a deployment can point it at a mounted volume
+# without a code change, and defaulting somewhere a laptop user never has to
+# think about.
+#
+# It is resolved through a dependency rather than a module-level global so that
+# tests get their own empty gallery per test. A global would make them share one
+# database and depend on execution order, which is the kind of test suite that
+# passes alone and fails in CI.
+_gallery: Gallery | None = None
+
+
+def gallery_store() -> Gallery:
+    global _gallery
+    if _gallery is None:
+        root = os.environ.get("ARTMENTOR_DATA") or (Path.home() / ".artmentor")
+        _gallery = Gallery(root)
+    return _gallery
+
+
+Store = Annotated[Gallery, Depends(gallery_store)]
+Digest = Annotated[str, PathParam(pattern=r"^[0-9a-f]{64}$")]
+
+
+def _gallery_error(exc: GalleryError) -> HTTPException:
+    """404 for a thing that is not there, 400 for a request that is wrong."""
+    return HTTPException(status_code=404 if isinstance(exc, NotFound) else 400, detail=str(exc))
+
+
+def _store_upload(upload: UploadFile, *, max_dimension: int = 1600) -> bytes:
+    """Validate, sanitise, and re-encode an upload into bytes safe to persist.
+
+    Note the order: nothing a client sent is ever written to disk. What gets
+    stored is the array that came out of the hardened loader, re-encoded — so
+    EXIF, GPS and any trailing payload are gone before persistence, not after.
+    """
+    loaded = _decode(_read_upload(upload), max_dimension)
+    return encode_image(loaded.rgb, fmt="JPEG")
+
+
+def _attempt_out(attempt: Attempt) -> AttemptOut:
+    return AttemptOut(
+        id=attempt.id,
+        created_at=attempt.created_at,
+        note=attempt.note,
+        message=attempt.message,
+        next_step=attempt.next_step,
+        measurements=[
+            MeasurementOut(key=m.key, value=m.value, unit=m.unit, explanation=m.explanation)
+            for m in attempt.measurements
+        ],
+        image_url=f"/gallery/images/{attempt.image_digest}",
+        thumbnail_url=f"/gallery/images/{attempt.image_digest}/thumb",
+    )
+
+
+def _piece_out(piece: Piece) -> PieceOut:
+    return PieceOut(
+        id=piece.id,
+        title=piece.title,
+        medium=piece.medium,
+        created_at=piece.created_at,
+        has_pattern=piece.pattern is not None,
+        pattern=piece.pattern,
+        image_url=f"/gallery/images/{piece.reference_digest}",
+        thumbnail_url=f"/gallery/images/{piece.reference_digest}/thumb",
+        attempts=[_attempt_out(a) for a in piece.attempts],
+    )
+
+
+def _progress_out(progress: Progress) -> ProgressOut:
+    return ProgressOut(
+        piece_id=progress.piece_id,
+        attempts=progress.attempts,
+        first_at=progress.first_at,
+        latest_at=progress.latest_at,
+        summary=progress.summary,
+        trends=[
+            TrendOut(
+                key=t.key,
+                unit=t.unit,
+                first=t.first,
+                latest=t.latest,
+                change=t.change,
+                improved=t.improved,
+                description=t.description,
+            )
+            for t in progress.trends
+        ],
+    )
+
+
+@app.post("/gallery/pieces", response_model=PieceOut, status_code=201)
+def create_piece(
+    store: Store,
+    image: Annotated[UploadFile, File(description="The reference the learner is painting from")],
+    title: Annotated[str, Form(max_length=120)],
+    medium: Annotated[str | None, Form(max_length=40)] = None,
+    pattern: Annotated[
+        str | None, Form(description="The JSON body of a previous /patterns response")
+    ] = None,
+) -> PieceOut:
+    """Start a piece: one reference photograph, worked on over several sittings.
+
+    The pattern is optional and stored verbatim. Keeping it means a learner can
+    reopen the piece weeks later and get the same numbered guide rather than a
+    regenerated one — quantization is deterministic, but the defaults it ran
+    under will not be once the pipeline moves on.
+    """
+    stored = _store_upload(image)
+
+    parsed: dict[str, Any] | None = None
+    if pattern:
+        try:
+            parsed = json.loads(pattern)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="pattern must be valid JSON.") from exc
+        if not isinstance(parsed, dict):
+            raise HTTPException(status_code=400, detail="pattern must be a JSON object.")
+
+    try:
+        return _piece_out(store.add_piece(title, stored, medium=medium, pattern=parsed))
+    except GalleryError as exc:
+        raise _gallery_error(exc) from exc
+
+
+@app.get("/gallery/pieces", response_model=list[PieceSummaryOut])
+def list_gallery(
+    store: Store,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> list[PieceSummaryOut]:
+    """Everything saved, most recently worked on first."""
+    return [
+        PieceSummaryOut(
+            id=p.id,
+            title=p.title,
+            medium=p.medium,
+            created_at=p.created_at,
+            updated_at=p.updated_at,
+            attempts=p.attempts,
+            has_pattern=p.has_pattern,
+            image_url=f"/gallery/images/{p.reference_digest}",
+            thumbnail_url=f"/gallery/images/{p.reference_digest}/thumb",
+        )
+        for p in store.list_pieces(limit=limit, offset=offset)
+    ]
+
+
+@app.get("/gallery/pieces/{piece_id}", response_model=PieceOut)
+def read_piece(store: Store, piece_id: str) -> PieceOut:
+    try:
+        return _piece_out(store.get_piece(piece_id))
+    except GalleryError as exc:
+        raise _gallery_error(exc) from exc
+
+
+@app.patch("/gallery/pieces/{piece_id}", response_model=PieceOut)
+def rename_piece(store: Store, piece_id: str, title: Annotated[str, Form(max_length=120)]) -> PieceOut:
+    try:
+        return _piece_out(store.rename_piece(piece_id, title))
+    except GalleryError as exc:
+        raise _gallery_error(exc) from exc
+
+
+@app.delete("/gallery/pieces/{piece_id}", status_code=204)
+def remove_piece(store: Store, piece_id: str) -> Response:
+    """Delete a piece, its attempts, and any image nothing else is using."""
+    try:
+        store.delete_piece(piece_id)
+    except GalleryError as exc:
+        raise _gallery_error(exc) from exc
+    return Response(status_code=204)
+
+
+@app.post("/gallery/pieces/{piece_id}/attempts", response_model=AttemptOut, status_code=201)
+def add_attempt(
+    store: Store,
+    piece_id: str,
+    image: Annotated[UploadFile, File(description="Photo of the painting as it stands")],
+    note: Annotated[str | None, Form(max_length=500)] = None,
+) -> AttemptOut:
+    """Save a photo of the work so far, critiqued against the stored reference.
+
+    The critique is computed here and stored with the attempt rather than being
+    recomputed on read. That is deliberate: `critique.py` will change, and a
+    learner's history must keep saying what it said at the time. A timeline that
+    silently rewrites last month's numbers when the code is updated is not a
+    record of anything.
+    """
+    try:
+        piece = store.get_piece(piece_id)
+        reference_bytes, _ = store.media_bytes(piece.reference_digest)
+    except GalleryError as exc:
+        raise _gallery_error(exc) from exc
+
+    attempt_bytes = _store_upload(image)
+    reference = _decode(reference_bytes, 900)
+    attempt = _decode(attempt_bytes, 900)
+    result = critique_attempt(reference.rgb, attempt.rgb)
+
+    try:
+        return _attempt_out(store.add_attempt(piece_id, attempt_bytes, result, note=note))
+    except GalleryError as exc:
+        raise _gallery_error(exc) from exc
+
+
+@app.delete("/gallery/attempts/{attempt_id}", status_code=204)
+def remove_attempt(store: Store, attempt_id: str) -> Response:
+    try:
+        store.delete_attempt(attempt_id)
+    except GalleryError as exc:
+        raise _gallery_error(exc) from exc
+    return Response(status_code=204)
+
+
+@app.get("/gallery/pieces/{piece_id}/progress", response_model=ProgressOut)
+def piece_progress(store: Store, piece_id: str) -> ProgressOut:
+    """Latest attempt against the first one — the "am I improving?" answer.
+
+    Still fidelity, not merit. The trends say the painting moved closer to its
+    reference, which is a fact about two photographs, and the wording is kept
+    free of praise for the same reason the critique is.
+    """
+    try:
+        return _progress_out(store.progress(piece_id))
+    except GalleryError as exc:
+        raise _gallery_error(exc) from exc
+
+
+@app.get("/gallery/images/{digest}", include_in_schema=False)
+def gallery_image(store: Store, digest: Digest) -> Response:
+    """Serve a stored image by content hash.
+
+    The path pattern only admits 64 hex characters, so no caller-supplied string
+    ever reaches the filesystem. Immutable by construction — the bytes are the
+    name — so it can be cached hard.
+    """
+    try:
+        data, media_type = store.media_bytes(digest)
+    except GalleryError as exc:
+        raise _gallery_error(exc) from exc
+    return Response(
+        content=data,
+        media_type=media_type,
+        headers={"Cache-Control": "public, max-age=31536000, immutable"},
+    )
+
+
+@app.get("/gallery/images/{digest}/thumb", include_in_schema=False)
+def gallery_thumbnail(store: Store, digest: Digest) -> Response:
+    try:
+        data = store.thumbnail(digest)
+    except GalleryError as exc:
+        raise _gallery_error(exc) from exc
+    return Response(
+        content=data,
+        media_type="image/jpeg",
+        headers={"Cache-Control": "public, max-age=31536000, immutable"},
     )

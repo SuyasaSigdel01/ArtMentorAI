@@ -12,15 +12,40 @@ rule — if the API layer ever grows its own image processing, that test fails.
 from __future__ import annotations
 
 import io
+import json
 
 import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
 
-from artmentor.api.app import app
+from artmentor.api.app import app, gallery_store
+from artmentor.store import Gallery
 
 client = TestClient(app)
+
+
+@pytest.fixture
+def gallery(tmp_path):
+    """A gallery of its own for each test, injected in place of the real one.
+
+    Through the dependency rather than by reaching into the module, so the
+    tests exercise the same wiring the server uses.
+    """
+    store = Gallery(tmp_path / "studio")
+    app.dependency_overrides[gallery_store] = lambda: store
+    yield store
+    app.dependency_overrides.clear()
+
+
+def new_piece(title: str = "Harbour", **extra) -> dict:
+    response = client.post(
+        "/gallery/pieces",
+        files={"image": ("ref.png", scene(240, 240), "image/png")},
+        data={"title": title, **extra},
+    )
+    assert response.status_code == 201, response.text
+    return response.json()
 
 
 def encode(img: Image.Image, fmt: str = "PNG") -> bytes:
@@ -325,3 +350,227 @@ class TestArchitecture:
         source = Path(module.__file__).read_text(encoding="utf-8")
         for banned in ("import cv2", "from skimage", "import skimage", "delta_E"):
             assert banned not in source, f"{banned} leaked into the API layer"
+
+
+class TestGallery:
+    def test_saving_a_piece_returns_links_to_its_images(self, gallery):
+        piece = new_piece("Harbour at dusk", medium="acrylic")
+        assert piece["title"] == "Harbour at dusk"
+        assert piece["medium"] == "acrylic"
+        assert piece["attempts"] == []
+        assert piece["image_url"].startswith("/gallery/images/")
+        assert piece["thumbnail_url"].endswith("/thumb")
+
+    def test_the_saved_reference_can_be_fetched_back(self, gallery):
+        piece = new_piece()
+        full = client.get(piece["image_url"])
+        thumb = client.get(piece["thumbnail_url"])
+        assert full.status_code == 200
+        assert full.headers["content-type"] == "image/jpeg"
+        assert thumb.status_code == 200
+        assert len(thumb.content) < len(full.content)
+
+    def test_uploads_are_sanitised_before_they_are_stored(self, gallery):
+        """Nothing a client sent reaches the disk — the stored copy is re-encoded.
+
+        A phone photo of a painting carries the GPS coordinates of the painter's
+        home. Storing the upload verbatim would undo the loader's EXIF stripping
+        at the one point where it lasts forever.
+        """
+        img = Image.open(io.BytesIO(scene(240, 240))).convert("RGB")
+        exif = img.getexif()
+        exif[0x010E] = "SECRET-LOCATION"  # ImageDescription
+        buffer = io.BytesIO()
+        img.save(buffer, format="JPEG", exif=exif.tobytes())
+        assert b"SECRET-LOCATION" in buffer.getvalue(), "the fixture must actually carry it"
+
+        response = client.post(
+            "/gallery/pieces",
+            files={"image": ("photo.jpg", buffer.getvalue(), "image/jpeg")},
+            data={"title": "From a phone"},
+        )
+        stored = client.get(response.json()["image_url"]).content
+        assert b"SECRET-LOCATION" not in stored
+        assert dict(Image.open(io.BytesIO(stored)).getexif()) == {}
+
+    def test_the_gallery_lists_what_was_saved(self, gallery):
+        new_piece("One")
+        new_piece("Two")
+        listing = client.get("/gallery/pieces").json()
+        assert {p["title"] for p in listing} == {"One", "Two"}
+        assert all(p["attempts"] == 0 for p in listing)
+
+    def test_a_pattern_can_be_kept_with_the_piece(self, gallery):
+        pattern = client.post(
+            "/patterns",
+            files={"image": ("scene.png", scene(), "image/png")},
+            params={"colors": 4, "max_dimension": 240},
+        ).json()
+        piece = new_piece("With a guide", pattern=json.dumps(pattern))
+        reopened = client.get(f"/gallery/pieces/{piece['id']}").json()
+        assert reopened["has_pattern"] is True
+        assert reopened["pattern"]["svg"] == pattern["svg"]
+
+    def test_rejects_a_pattern_that_is_not_json(self, gallery):
+        response = client.post(
+            "/gallery/pieces",
+            files={"image": ("ref.png", scene(240, 240), "image/png")},
+            data={"title": "Bad", "pattern": "{not json"},
+        )
+        assert response.status_code == 400
+
+    def test_rejects_a_piece_with_no_title(self, gallery):
+        response = client.post(
+            "/gallery/pieces",
+            files={"image": ("ref.png", scene(240, 240), "image/png")},
+            data={"title": "   "},
+        )
+        assert response.status_code == 400
+
+    def test_rejects_a_reference_that_is_not_an_image(self, gallery):
+        response = client.post(
+            "/gallery/pieces",
+            files={"image": ("x.png", b"certainly not a picture", "image/png")},
+            data={"title": "Nope"},
+        )
+        assert response.status_code == 400
+
+    def test_renaming(self, gallery):
+        piece = new_piece("Untitled")
+        renamed = client.patch(
+            f"/gallery/pieces/{piece['id']}", data={"title": "Seascape"}
+        )
+        assert renamed.status_code == 200
+        assert renamed.json()["title"] == "Seascape"
+
+    def test_deleting_a_piece_removes_it_and_its_images(self, gallery):
+        piece = new_piece()
+        assert client.delete(f"/gallery/pieces/{piece['id']}").status_code == 204
+        assert client.get(f"/gallery/pieces/{piece['id']}").status_code == 404
+        assert client.get(piece["image_url"]).status_code == 404
+
+    def test_unknown_things_are_404_not_400(self, gallery):
+        assert client.get("/gallery/pieces/nope").status_code == 404
+        assert client.delete("/gallery/pieces/nope").status_code == 404
+        assert client.delete("/gallery/attempts/nope").status_code == 404
+        assert client.get(f"/gallery/images/{'0' * 64}").status_code == 404
+
+    def test_a_malformed_digest_never_reaches_the_store(self, gallery):
+        """The route only admits 64 hex characters, so nothing else is looked up."""
+        for bad in ("abc", "Z" * 64, "0" * 63, "0" * 65):
+            assert client.get(f"/gallery/images/{bad}").status_code == 422
+
+    def test_a_traversal_attempt_is_refused_by_routing(self, gallery):
+        """Two defences, and this one fires first.
+
+        An encoded `../` is decoded before matching, so it stops being a single
+        path segment and matches no route at all. Even if it got through, the
+        store addresses files by hash and never by a caller's string.
+        """
+        for bad in ("..%2F..%2Fetc%2Fpasswd", "../../etc/passwd", "%2e%2e%2fsecrets"):
+            assert client.get(f"/gallery/images/{bad}").status_code in (404, 422)
+
+
+class TestGalleryAttempts:
+    def test_saving_an_attempt_critiques_it_against_the_reference(self, gallery):
+        piece = new_piece()
+        response = client.post(
+            f"/gallery/pieces/{piece['id']}/attempts",
+            files={"image": ("att.png", scene(240, 240), "image/png")},
+            data={"note": "first sitting"},
+        )
+        assert response.status_code == 201, response.text
+        attempt = response.json()
+        assert attempt["note"] == "first sitting"
+        assert attempt["message"]
+        assert {m["key"] for m in attempt["measurements"]} == {
+            "colour_accuracy",
+            "value_structure",
+            "lightness_bias",
+            "chroma_bias",
+        }
+
+    def test_attempts_show_up_on_the_piece_and_in_the_listing(self, gallery):
+        piece = new_piece()
+        for _ in range(2):
+            client.post(
+                f"/gallery/pieces/{piece['id']}/attempts",
+                files={"image": ("att.png", scene(240, 240), "image/png")},
+            )
+        assert len(client.get(f"/gallery/pieces/{piece['id']}").json()["attempts"]) == 2
+        assert client.get("/gallery/pieces").json()[0]["attempts"] == 2
+
+    def test_an_attempt_against_a_missing_piece_is_404(self, gallery):
+        response = client.post(
+            "/gallery/pieces/nope/attempts",
+            files={"image": ("att.png", scene(240, 240), "image/png")},
+        )
+        assert response.status_code == 404
+
+    def test_deleting_an_attempt_leaves_the_piece(self, gallery):
+        piece = new_piece()
+        attempt = client.post(
+            f"/gallery/pieces/{piece['id']}/attempts",
+            files={"image": ("att.png", scene(240, 240), "image/png")},
+        ).json()
+        assert client.delete(f"/gallery/attempts/{attempt['id']}").status_code == 204
+        assert client.get(f"/gallery/pieces/{piece['id']}").json()["attempts"] == []
+
+    def test_a_stored_critique_is_not_recomputed_on_read(self, gallery):
+        """History must keep saying what it said when it was written."""
+        piece = new_piece()
+        written = client.post(
+            f"/gallery/pieces/{piece['id']}/attempts",
+            files={"image": ("att.png", scene(240, 240), "image/png")},
+        ).json()
+        read_back = client.get(f"/gallery/pieces/{piece['id']}").json()["attempts"][0]
+        assert read_back["measurements"] == written["measurements"]
+        assert read_back["message"] == written["message"]
+
+
+class TestGalleryProgress:
+    def darker(self, factor: float) -> bytes:
+        arr = np.asarray(Image.open(io.BytesIO(scene(240, 240))), dtype=np.float64)
+        return encode(Image.fromarray(np.clip(arr * factor, 0, 255).astype("uint8")))
+
+    def test_one_attempt_has_nothing_to_compare_yet(self, gallery):
+        piece = new_piece()
+        client.post(
+            f"/gallery/pieces/{piece['id']}/attempts",
+            files={"image": ("att.png", scene(240, 240), "image/png")},
+        )
+        body = client.get(f"/gallery/pieces/{piece['id']}/progress").json()
+        assert body["attempts"] == 1
+        assert body["trends"] == []
+        assert "another attempt" in body["summary"]
+
+    def test_a_closer_second_attempt_reads_as_improvement(self, gallery):
+        piece = new_piece()
+        for image in (self.darker(0.5), scene(240, 240)):
+            client.post(
+                f"/gallery/pieces/{piece['id']}/attempts",
+                files={"image": ("att.png", image, "image/png")},
+            )
+        body = client.get(f"/gallery/pieces/{piece['id']}/progress").json()
+        trends = {t["key"]: t for t in body["trends"]}
+        assert trends["colour_accuracy"]["improved"] is True
+        assert trends["colour_accuracy"]["latest"] < trends["colour_accuracy"]["first"]
+        assert trends["colour_accuracy"]["description"]
+
+    def test_progress_claims_nothing_about_quality(self, gallery):
+        piece = new_piece()
+        for image in (self.darker(0.5), scene(240, 240)):
+            client.post(
+                f"/gallery/pieces/{piece['id']}/attempts",
+                files={"image": ("att.png", image, "image/png")},
+            )
+        body = client.get(f"/gallery/pieces/{piece['id']}/progress").json()
+        text = " ".join([body["summary"]] + [t["description"] for t in body["trends"]]).lower()
+        assert not any(w in text for w in ("score", "grade", "talent", "beautiful", "/10"))
+
+    def test_progress_on_a_piece_with_no_attempts(self, gallery):
+        piece = new_piece()
+        assert client.get(f"/gallery/pieces/{piece['id']}/progress").status_code == 400
+
+    def test_progress_on_a_missing_piece_is_404(self, gallery):
+        assert client.get("/gallery/pieces/nope/progress").status_code == 404

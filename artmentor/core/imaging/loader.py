@@ -25,7 +25,13 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageOps
 
-__all__ = ["ImageTooLargeError", "LoadedImage", "UnsupportedImageError", "load_image"]
+__all__ = [
+    "ImageTooLargeError",
+    "LoadedImage",
+    "UnsupportedImageError",
+    "encode_image",
+    "load_image",
+]
 
 
 # Deliberately short. Every additional format is another parser's attack surface.
@@ -177,3 +183,30 @@ def _fit_within(img: Image.Image, max_dimension: int) -> Image.Image:
     scale = max_dimension / float(longest)
     new_size = (max(1, int(round(w * scale))), max(1, int(round(h * scale))))
     return img.resize(new_size, Image.LANCZOS)
+
+
+def encode_image(rgb: np.ndarray, *, fmt: str = "JPEG", quality: int = 92) -> bytes:
+    """The inverse of `load_image`: a sanitised array back to storable bytes.
+
+    Anything persisted should be this, never the bytes a client uploaded. By the
+    time an array reaches here it has been through the checks above — EXIF gone,
+    orientation applied, re-encoded through a canonical RGB path — and writing
+    the original upload to disk instead would quietly undo all four of them and
+    keep the user's GPS coordinates alongside their painting.
+
+    JPEG by default because the things worth keeping are photographs, where PNG
+    costs roughly ten times the bytes for no visible gain.
+    """
+    if rgb.ndim != 3 or rgb.shape[2] != 3:
+        raise UnsupportedImageError("Expected an (H, W, 3) RGB array.")
+    fmt = fmt.upper()
+    if fmt not in _ALLOWED_FORMATS:
+        raise UnsupportedImageError(f"Cannot encode to {fmt}.")
+
+    buffer = io.BytesIO()
+    image = Image.fromarray(np.ascontiguousarray(rgb, dtype=np.uint8), mode="RGB")
+    if fmt == "JPEG":
+        image.save(buffer, format="JPEG", quality=int(quality), optimize=True)
+    else:
+        image.save(buffer, format=fmt)
+    return buffer.getvalue()

@@ -62,6 +62,7 @@ __all__ = [
     "Attempt",
     "Gallery",
     "GalleryError",
+    "NotFound",
     "Piece",
     "PieceSummary",
     "Progress",
@@ -97,6 +98,15 @@ class GalleryError(RuntimeError):
 
     Distinct from sqlite3 errors on purpose: the API layer maps this to a 4xx,
     while a raw sqlite3 error is a bug and deserves a 500.
+    """
+
+
+class NotFound(GalleryError):
+    """The id or digest does not exist.
+
+    Its own class so the HTTP layer can answer 404 rather than 400 without
+    pattern-matching on the text of an error message — which works right up
+    until someone rewords one.
     """
 
 
@@ -374,19 +384,19 @@ class Gallery:
         with self._connect() as db:
             row = db.execute("SELECT format FROM media WHERE digest = ?", (digest,)).fetchone()
         if row is None:
-            raise GalleryError("no such image")
+            raise NotFound("no such image")
         fmt = row["format"]
         suffix = {"JPEG": ".jpg", "PNG": ".png", "WEBP": ".webp"}[fmt]
         path = self._media_path(digest, suffix)
         if not path.is_file():
-            raise GalleryError("that image is recorded but its file is missing")
+            raise NotFound("that image is recorded but its file is missing")
         return path.read_bytes(), f"image/{'jpeg' if fmt == 'JPEG' else fmt.lower()}"
 
     def thumbnail(self, digest: str) -> bytes:
         with self._connect() as db:
             row = db.execute("SELECT thumb FROM media WHERE digest = ?", (digest,)).fetchone()
         if row is None:
-            raise GalleryError("no such image")
+            raise NotFound("no such image")
         return bytes(row["thumb"])
 
     def _collect_orphans(self, db: sqlite3.Connection) -> int:
@@ -474,7 +484,7 @@ class Gallery:
         with self._connect() as db:
             row = db.execute("SELECT * FROM pieces WHERE id = ?", (piece_id,)).fetchone()
             if row is None:
-                raise GalleryError("no such piece")
+                raise NotFound("no such piece")
             attempts = self._attempts(db, piece_id)
         return Piece(
             id=row["id"],
@@ -495,14 +505,14 @@ class Gallery:
                 "UPDATE pieces SET title = ? WHERE id = ?", (clean, piece_id)
             ).rowcount
         if not changed:
-            raise GalleryError("no such piece")
+            raise NotFound("no such piece")
         return self.get_piece(piece_id)
 
     def delete_piece(self, piece_id: str) -> None:
         with self._connect() as db:
             changed = db.execute("DELETE FROM pieces WHERE id = ?", (piece_id,)).rowcount
             if not changed:
-                raise GalleryError("no such piece")
+                raise NotFound("no such piece")
             self._collect_orphans(db)
 
     # -- attempts -----------------------------------------------------------
@@ -525,7 +535,7 @@ class Gallery:
         )
         with self._connect() as db:
             if db.execute("SELECT 1 FROM pieces WHERE id = ?", (piece_id,)).fetchone() is None:
-                raise GalleryError("no such piece")
+                raise NotFound("no such piece")
             digest = self._store_media(db, image)
             db.execute(
                 "INSERT INTO attempts (id, piece_id, created_at, image_digest, "
@@ -556,7 +566,7 @@ class Gallery:
         with self._connect() as db:
             changed = db.execute("DELETE FROM attempts WHERE id = ?", (attempt_id,)).rowcount
             if not changed:
-                raise GalleryError("no such attempt")
+                raise NotFound("no such attempt")
             self._collect_orphans(db)
 
     @staticmethod
