@@ -209,6 +209,108 @@ class TestShadeCheck:
         assert response.status_code == 400
 
 
+class TestGrid:
+    def test_returns_a_grid_and_the_numbers_an_artist_needs(self):
+        response = client.post(
+            "/grid",
+            files={"image": ("scene.png", scene(300, 200), "image/png")},
+            params={"divisions": 6},
+        )
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["columns"] == 6
+        assert body["cells"] == body["columns"] * body["rows"]
+        assert body["cell_mm_a4"] > 0
+        assert body["svg"].startswith("<?xml")
+        assert "data:image/jpeg;base64," in body["svg"]
+
+    def test_reports_when_cells_cannot_be_square(self):
+        """An oblong grid distorts the drawing, so the client must be able to warn."""
+        wide = client.post(
+            "/grid",
+            files={"image": ("w.png", scene(1200, 300), "image/png")},
+            params={"divisions": 6},
+        ).json()
+        assert wide["square_enough"] is False
+
+    def test_labels_and_diagonals_are_switchable(self):
+        files = {"image": ("scene.png", scene(300, 200), "image/png")}
+        plain = client.post("/grid", files=files, params={"labels": False}).json()["svg"]
+        assert "<text" not in plain
+
+    @pytest.mark.parametrize("divisions", [1, 99])
+    def test_validates_divisions(self, divisions):
+        response = client.post(
+            "/grid",
+            files={"image": ("scene.png", scene(300, 200), "image/png")},
+            params={"divisions": divisions},
+        )
+        assert response.status_code == 422
+
+    def test_rejects_a_non_image(self):
+        response = client.post(
+            "/grid", files={"image": ("x.png", b"definitely not an image here", "image/png")}
+        )
+        assert response.status_code == 400
+
+
+class TestCritique:
+    def test_measures_a_painting_against_its_reference(self):
+        response = client.post(
+            "/critique",
+            files={
+                "reference": ("ref.png", scene(240, 240), "image/png"),
+                "attempt": ("att.png", scene(240, 240), "image/png"),
+            },
+        )
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["message"]
+        assert body["next_step"]
+        keys = {m["key"] for m in body["measurements"]}
+        assert keys == {
+            "colour_accuracy",
+            "value_structure",
+            "lightness_bias",
+            "chroma_bias",
+        }
+        assert all(m["explanation"] for m in body["measurements"])
+
+    def test_notices_a_painting_that_is_too_dark(self):
+        import numpy as np
+        from PIL import Image
+
+        arr = np.asarray(Image.open(io.BytesIO(scene(240, 240))), dtype=np.float64)
+        dark = encode(Image.fromarray((arr * 0.55).astype("uint8")))
+
+        body = client.post(
+            "/critique",
+            files={
+                "reference": ("ref.png", scene(240, 240), "image/png"),
+                "attempt": ("att.png", dark, "image/png"),
+            },
+        ).json()
+        assert "dark" in body["message"].lower()
+
+    def test_reports_no_score_or_verdict_on_quality(self):
+        """The API must not leak an aesthetic judgement the core refuses to make."""
+        body = client.post(
+            "/critique",
+            files={
+                "reference": ("ref.png", scene(240, 240), "image/png"),
+                "attempt": ("att.png", scene(240, 240), "image/png"),
+            },
+        ).json()
+        text = (body["message"] + " " + (body["next_step"] or "")).lower()
+        assert not any(w in text for w in ("score", "/10", "grade", "beautiful", "talented"))
+
+    def test_requires_both_images(self):
+        response = client.post(
+            "/critique", files={"reference": ("ref.png", scene(240, 240), "image/png")}
+        )
+        assert response.status_code == 422
+
+
 class TestArchitecture:
     def test_api_does_not_reimplement_core(self):
         """The API layer must stay a translation layer.

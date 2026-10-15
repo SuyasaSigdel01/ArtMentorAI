@@ -858,6 +858,119 @@
             color: var(--vermilion)
         }
         
+        .chk {
+            display: flex;
+            align-items: flex-start;
+            gap: 9px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 11px;
+            line-height: 1.45
+        }
+        
+        .chk input {
+            accent-color: var(--vermilion);
+            margin-top: 4px;
+            flex: none
+        }
+        
+        .gridfacts {
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+            margin-top: 14px;
+            padding-top: 13px;
+            border-top: 1px solid var(--faint)
+        }
+        
+        .gridfacts b {
+            display: block;
+            font-size: 21px;
+            font-variant-numeric: tabular-nums
+        }
+        
+        .gridfacts span {
+            font: 400 11px/1 ui-sans-serif, sans-serif;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: var(--ink-2)
+        }
+        
+        .warn {
+            background: #fbf3e3;
+            border: 1px solid #e8d4a8;
+            color: #7a5a12;
+            padding: 11px 13px;
+            border-radius: 9px;
+            font-size: 13.5px;
+            margin-top: 14px
+        }
+        
+        .measures {
+            list-style: none;
+            margin: 18px 0 0;
+            padding: 0
+        }
+        
+        .measures li {
+            padding: 13px 0;
+            border-top: 1px solid var(--faint)
+        }
+        
+        .measures .top {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 12px
+        }
+        
+        .measures .nm {
+            font: 500 12px/1 ui-sans-serif, sans-serif;
+            letter-spacing: .09em;
+            text-transform: uppercase;
+            color: var(--ink-2)
+        }
+        
+        .measures .fig {
+            font-size: 19px;
+            font-variant-numeric: tabular-nums;
+            font-weight: 600
+        }
+        
+        .measures .say {
+            color: var(--ink-2);
+            font-size: 14px;
+            margin-top: 4px
+        }
+        
+        .nextstep {
+            background: var(--paper-2);
+            border-left: 3px solid var(--vermilion);
+            padding: 15px 18px;
+            border-radius: 0 10px 10px 0;
+            margin-top: 22px
+        }
+        
+        .nextstep .hd {
+            font: 600 11px/1 ui-sans-serif, sans-serif;
+            letter-spacing: .11em;
+            text-transform: uppercase;
+            color: var(--vermilion);
+            margin-bottom: 7px
+        }
+        
+        .twoup {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px
+        }
+        
+        @media (max-width:520px) {
+            .twoup {
+                grid-template-columns: 1fr
+            }
+        }
+        
         .err {
             background: #fbeee9;
             border: 1px solid #e8c3b4;
@@ -915,7 +1028,9 @@
             </a>
             <nav>
                 <button id="tab-pattern" aria-selected="true">Make a pattern</button>
+                <button id="tab-grid" aria-selected="false">Sketch grid</button>
                 <button id="tab-check" aria-selected="false">Check a mix</button>
+                <button id="tab-review" aria-selected="false">Review a painting</button>
             </nav>
         </div>
     </header>
@@ -1058,6 +1173,94 @@
             </div>
         </section>
 
+        <!-- ══════════════════════════ GRID ══════════════════════════ -->
+        <section class="panel" id="panel-grid" hidden>
+            <h1>Draw it <em>square by square</em>.</h1>
+            <p class="lede">
+                The oldest trick there is. Judging one small cell is far easier than judging a whole page, which is how most people first get proportions right.
+            </p>
+
+            <div class="split">
+                <div class="sheet">
+                    <h2 class="sec"><span class="step">1</span> Your reference</h2>
+                    <div class="drop" id="drop-g">
+                        <div class="ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="3" y="3" width="18" height="18" rx="2"/>
+          <path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg></div>
+                        <b>Drop an image here</b>
+                        <small>or click to browse</small>
+                    </div>
+                    <input type="file" id="file-g" accept="image/jpeg,image/png,image/webp">
+
+                    <div class="knob">
+                        <div class="lab"><span>Cells across</span><span class="val" id="v-div">6</span></div>
+                        <input type="range" id="divisions" min="3" max="16" value="6">
+                    </div>
+
+                    <label class="chk" style="margin-top:16px"><input type="checkbox" id="g-labels" checked>
+        <span>Letter and number the cells</span></label>
+                    <label class="chk" style="margin-top:9px"><input type="checkbox" id="g-diag">
+        <span>Add diagonal guides</span></label>
+
+                    <button class="brush" id="run-g" disabled>Draw the grid</button>
+                    <p class="aside">Print it, then rule the same number of cells on your paper.</p>
+                </div>
+
+                <div id="out-g">
+                    <div class="empty">
+                        <div class="frame">
+                            <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#c9bda9" stroke-width="1.1"><rect x="3" y="3" width="18" height="18"/>
+          <path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg>
+                        </div>
+                        <p>No grid drawn yet.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ══════════════════════════ REVIEW ══════════════════════════ -->
+        <section class="panel" id="panel-review" hidden>
+            <h1>How close did you <em>get</em>?</h1>
+            <p class="lede">
+                This measures how far your painting sits from the reference — colour, values, lightness. It does not judge whether the painting is any good; nothing can.
+            </p>
+
+            <div class="split">
+                <div class="sheet">
+                    <h2 class="sec"><span class="step">1</span> Both pictures</h2>
+                    <div class="twoup">
+                        <div>
+                            <div class="drop" id="drop-r1" style="padding:20px 10px">
+                                <b style="font-size:14px">Reference</b>
+                                <small>what you copied</small>
+                            </div>
+                            <input type="file" id="file-r1" accept="image/jpeg,image/png,image/webp">
+                        </div>
+                        <div>
+                            <div class="drop" id="drop-r2" style="padding:20px 10px">
+                                <b style="font-size:14px">Your painting</b>
+                                <small>photographed flat</small>
+                            </div>
+                            <input type="file" id="file-r2" accept="image/jpeg,image/png,image/webp">
+                        </div>
+                    </div>
+
+                    <button class="brush" id="run-r" disabled>Review it</button>
+                    <p class="aside">
+                        Shoot your painting square-on and cropped to the edges — it is compared directly, with no perspective correction.
+                    </p>
+                </div>
+
+                <div id="out-r">
+                    <div class="empty">
+                        <div class="frame">
+                            <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#c9bda9" stroke-width="1.1"><path d="M4 19l5-11 4 7 3-4 4 8z"/><circle cx="8" cy="5.5" r="1.8"/></svg>
+                        </div>
+                        <p>Nothing to review yet.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
     </main>
 
     <script>
@@ -1081,14 +1284,12 @@
             };
 
         /* ───────── tabs ───────── */
-        const show = n => {
-            $('panel-pattern').hidden = n !== 'pattern';
-            $('panel-check').hidden = n !== 'check';
-            $('tab-pattern').setAttribute('aria-selected', n === 'pattern');
-            $('tab-check').setAttribute('aria-selected', n === 'check');
-        };
-        $('tab-pattern').onclick = () => show('pattern');
-        $('tab-check').onclick = () => show('check');
+        const TABS = ['pattern', 'grid', 'check', 'review'];
+        const show = n => TABS.forEach(t => {
+            $('panel-' + t).hidden = t !== n;
+            $('tab-' + t).setAttribute('aria-selected', t === n);
+        });
+        TABS.forEach(t => $('tab-' + t).onclick = () => show(t));
 
         /* ───────── file pickers ───────── */
         function dropzone(dropId, inputId, done) {
@@ -1111,7 +1312,11 @@
         }
         const marked = (f, d) => {
             d.classList.add('has');
-            d.querySelector('.ic').innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4a7a3a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.5 5.5L20 6"/></svg>';
+            // The compact review drop zones carry no icon, so this has to tolerate its
+            // absence — without the guard the whole handler threw and the submit button
+            // silently never enabled.
+            const ic = d.querySelector('.ic');
+            if (ic) ic.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4a7a3a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.5 5.5L20 6"/></svg>';
             d.querySelector('b').textContent = f.name;
             d.querySelector('small').textContent = (f.size / 1048576).toFixed(1) + ' MB — click to swap';
         };
@@ -1418,12 +1623,109 @@
     </div>`;
         }
 
-        /* ───────── small helpers ───────── */
-        function ink(hex) {
-            const n = parseInt(hex.slice(1), 16);
-            return (0.299 * (n >> 16 & 255) + 0.587 * (n >> 8 & 255) + 0.114 * (n & 255)) > 150 ? '#241f1a' : '#fff8f0';
-        }
-        const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+        /* ───────── sketch grid ───────── */
+        let fileG = null;
+        dropzone('drop-g', 'file-g', (f, d) => {
+            fileG = f;
+            marked(f, d);
+            $('run-g').disabled = false;
+        });
+        $('divisions').oninput = e => $('v-div').textContent = e.target.value;
+
+        $('run-g').onclick = async() => {
+                const btn = $('run-g');
+                btn.disabled = true;
+                btn.innerHTML = '<span class="load"></span>Ruling lines…';
+                const q = new URLSearchParams({
+                    divisions: $('divisions').value,
+                    labels: $('g-labels').checked,
+                    diagonals: $('g-diag').checked
+                });
+                const body = new FormData();
+                body.append('image', fileG);
+                try {
+                    const res = await fetch('/grid?' + q, {
+                        method: 'POST',
+                        body
+                    });
+                    const d = await res.json();
+                    if (!res.ok) throw new Error(d.detail || 'Something went wrong');
+                    $('out-g').innerHTML = `
+      <div class="canvas fade">
+        <div class="toolbar">
+          <a class="ghost" id="dlg" style="margin-left:auto;text-decoration:none">Download SVG</a>
+        </div>
+        <div class="mat">${d.svg}</div>
+        <div class="gridfacts">
+          <div><b>${d.columns}&times;${d.rows}</b><span>cells</span></div>
+          <div><b>${d.cells}</b><span>squares to copy</span></div>
+          <div><b>${d.cell_mm_a4}mm</b><span>per cell on A4</span></div>
+        </div>
+        ${d.square_enough ? '' : `<div class="warn">These cells are not quite square —
+          this image's proportions don't divide evenly. Copying through them will
+          stretch your drawing slightly. Try a different number of cells across.</div>`}
+      </div>`;
+    $('dlg').href=URL.createObjectURL(new Blob([d.svg],{type:'image/svg+xml'}));
+    $('dlg').download='grid.svg';
+  }catch(e){ $('out-g').innerHTML=`<div class="err">${e.message}</div>`; }
+  finally{ btn.disabled=false; btn.textContent='Draw the grid'; }
+};
+
+/* ───────── review a painting ───────── */
+let fileR1=null, fileR2=null;
+const readyR = ()=>{ $('run-r').disabled = !(fileR1 && fileR2); };
+dropzone('drop-r1','file-r1',(f,d)=>{fileR1=f; marked(f,d); readyR();});
+dropzone('drop-r2','file-r2',(f,d)=>{fileR2=f; marked(f,d); readyR();});
+
+const NICE = {colour_accuracy:'Colour', value_structure:'Values',
+              lightness_bias:'Lightness', chroma_bias:'Saturation'};
+
+$('run-r').onclick = async ()=>{
+  const btn=$('run-r'); btn.disabled=true; btn.innerHTML='<span class="load"></span>Comparing…';
+  const body=new FormData();
+  body.append('reference',fileR1); body.append('attempt',fileR2);
+  try{
+    const res=await fetch('/critique',{method:'POST',body});
+    const d=await res.json();
+    if(!res.ok) throw new Error(d.detail||'Something went wrong');
+    const figure = m => {
+      // Correlation as a percentage: "1 correlation" is meaningless next to an
+      // explanation that already reads "matches about 100%".
+      if (m.unit === 'correlation') return `${Math.round(Math.max(0, m.value)*100)}<span
+        style="font-size:13px;color:var(--ink-2);font-weight:400">%</span>`;
+      const sign = (m.unit === 'L*' || m.unit === 'C*') && m.value > 0 ? '+' : '';
+      return `${sign}${m.value}<span
+        style="font-size:12px;color:var(--ink-2);font-weight:400"> ${m.unit}</span>`;
+    };
+    const rows=d.measurements.map(m=>`
+      <li>
+        <div class="top">
+          <span class="nm">${NICE[m.key]||m.key}</span>
+          <span class="fig">${figure(m)}</span>
+        </div>
+        <div class="say">${m.explanation}</div>
+      </li>`).join('');
+    $('out-r').innerHTML=`
+      <div class="sheet fade">
+        <h3 style="font-size:24px;letter-spacing:-.02em;margin:4px 0 0;font-weight:600">${d.message}</h3>
+        ${d.next_step ? `<div class="nextstep">
+            <div class="hd">Try this next</div>${d.next_step}</div>` : ''}
+        <ul class="measures">${rows}</ul>
+        <p class="aside">
+          These are measurements against your reference, not a verdict on the painting.
+          Nothing here knows whether it is any good — that is not a thing software can tell you.
+        </p>
+      </div>`;
+  }catch(e){ $('out-r').innerHTML=`<div class="err">${e.message}</div>`; }
+  finally{ btn.disabled=false; btn.textContent='Review it'; }
+};
+
+/* ───────── small helpers ───────── */
+function ink(hex){
+  const n=parseInt(hex.slice(1),16);
+  return (0.299*(n>>16&255)+0.587*(n>>8&255)+0.114*(n&255))>150 ? '#241f1a' : '#fff8f0';
+}
+const cap = s => s.charAt(0).toUpperCase()+s.slice(1);
     </script>
 </body>
 

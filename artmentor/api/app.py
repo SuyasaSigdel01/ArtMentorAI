@@ -32,6 +32,7 @@ from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 
 from ..core.color.mixing import predict_mix_color
+from ..core.critique import critique_attempt
 from ..core.imaging.loader import (
     MAX_BYTES,
     ImageTooLargeError,
@@ -42,6 +43,7 @@ from ..core.paints import STARTER_ACRYLICS, catalog_by_id
 from ..core.pipeline import PIPELINE_VERSION, PatternParams, generate_pattern
 from ..core.recipes import recipes_for_pattern
 from ..core.render.calibration import render_calibration_card_svg
+from ..core.render.grid import render_grid_svg
 from ..core.render.svg import render_pattern_svg
 from ..core.swatch import check_shade
 from ..core.types import RGBColor
@@ -100,6 +102,30 @@ class MixOut(BaseModel):
     hex: str
     lab: list[float]
     instructions: str
+
+
+class GridOut(BaseModel):
+    columns: int
+    rows: int
+    cells: int
+    square_enough: bool = Field(
+        description="False means the image's proportions do not divide into square cells"
+    )
+    cell_mm_a4: float = Field(description="Millimetres per cell when scaled to A4's long edge")
+    svg: str
+
+
+class MeasurementOut(BaseModel):
+    key: str
+    value: float
+    unit: str
+    explanation: str
+
+
+class CritiqueOut(BaseModel):
+    message: str
+    next_step: str | None
+    measurements: list[MeasurementOut]
 
 
 class ShadeCheckOut(BaseModel):
@@ -324,6 +350,60 @@ def mix(
         hex=result.hex,
         lab=[round(result.lab.L, 2), round(result.lab.a, 2), round(result.lab.b, 2)],
         instructions=result.describe(),
+    )
+
+
+@app.post("/grid", response_model=GridOut)
+def grid(
+    image: Annotated[UploadFile, File(description="The reference photograph")],
+    divisions: Annotated[int, Query(ge=2, le=40, description="Cells along the long edge")] = 6,
+    labels: Annotated[bool, Query()] = True,
+    diagonals: Annotated[bool, Query()] = False,
+    max_dimension: Annotated[int, Query(ge=200, le=2000)] = 1000,
+) -> GridOut:
+    """Overlay a grid on a reference, for the grid drawing method.
+
+    `cell_mm_a4` is the number an artist actually uses: how far apart to make
+    pencil marks once the reference is scaled onto A4. Pixels are no use at a
+    drawing board, and converting in your head is where the proportions go wrong.
+    """
+    loaded = _decode(_read_upload(image), max_dimension)
+    svg, plan = render_grid_svg(
+        loaded.rgb, divisions=divisions, labels=labels, diagonals=diagonals
+    )
+    return GridOut(
+        columns=plan.columns,
+        rows=plan.rows,
+        cells=plan.columns * plan.rows,
+        square_enough=plan.is_square_enough,
+        cell_mm_a4=round(plan.cell_size_mm(297), 1),
+        svg=svg,
+    )
+
+
+@app.post("/critique", response_model=CritiqueOut)
+def critique(
+    reference: Annotated[UploadFile, File(description="What they were copying")],
+    attempt: Annotated[UploadFile, File(description="Photo of their painting")],
+    max_dimension: Annotated[int, Query(ge=200, le=2000)] = 900,
+) -> CritiqueOut:
+    """Measure how closely a painting follows its reference.
+
+    This reports fidelity, never merit. There is no score and no aesthetic
+    judgement — see `core/critique.py` for why that distinction is load-bearing
+    rather than cautious.
+    """
+    ref = _decode(_read_upload(reference), max_dimension)
+    att = _decode(_read_upload(attempt), max_dimension)
+
+    result = critique_attempt(ref.rgb, att.rgb)
+    return CritiqueOut(
+        message=result.message,
+        next_step=result.suggested_next_step,
+        measurements=[
+            MeasurementOut(key=m.key, value=m.value, unit=m.unit, explanation=m.explanation)
+            for m in result.measurements
+        ],
     )
 
 
