@@ -5,6 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>ArtMentor — paint tutor</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><path d='M16 3C8.8 3 3 8.4 3 15c0 6.3 5.2 10.6 11.4 10.6 1.7 0 2.6-1 2.6-2.2 0-1.1-.8-1.6-.8-2.6 0-1.2 1-2.1 2.4-2.1h2.1c4 0 6.3-2.6 6.3-6.6C27 7.3 22.3 3 16 3z' fill='%23fffdf9' stroke='%23241f1a' stroke-width='1.7'/><circle cx='9.5' cy='13' r='2.1' fill='%232f3a86'/><circle cx='15' cy='9.2' r='2.1' fill='%23c2552b'/><circle cx='20.8' cy='12' r='2.1' fill='%23c69320'/><circle cx='11.6' cy='19.3' r='2.1' fill='%234a7a3a'/></svg>">
     <style>
          :root {
             --paper: #f4efe6;
@@ -970,6 +971,253 @@
                 grid-template-columns: 1fr
             }
         }
+        /* ───────────────────────────── studio ───────────────────────────── */
+        
+        .field {
+            margin-top: 16px
+        }
+        
+        .field label {
+            display: block;
+            font: 500 12.5px/1 ui-sans-serif, sans-serif;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            color: var(--ink-2);
+            margin-bottom: 7px
+        }
+        
+        .field input[type=text],
+        .field select {
+            width: 100%;
+            font: inherit;
+            font-size: 15px;
+            color: var(--ink);
+            background: #fdfbf7;
+            border: 1px solid var(--faint);
+            border-radius: 8px;
+            padding: 10px 12px
+        }
+        
+        .field input[type=text]:focus,
+        .field select:focus {
+            outline: none;
+            border-color: var(--vermilion)
+        }
+        
+        .tiles {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+            gap: 20px
+        }
+        
+        .tile {
+            display: block;
+            width: 100%;
+            text-align: left;
+            border: 0;
+            padding: 0;
+            background: none;
+            font: inherit;
+            color: inherit;
+            cursor: pointer;
+            transition: transform .2s cubic-bezier(.3, 1.3, .5, 1)
+        }
+        
+        .tile:hover {
+            transform: translateY(-4px) rotate(-.7deg)
+        }
+        /* A painting on a wall, not a thumbnail in a list: mount, frame, and a shadow
+   that falls the way a hung canvas casts one. */
+        
+        .tile .mount {
+            display: block;
+            /* a span is inline: padding and the frame collapse without this */
+            background: var(--card);
+            border: 1px solid var(--faint);
+            border-radius: 4px;
+            padding: 9px 9px 11px;
+            box-shadow: var(--lift)
+        }
+        
+        .tile .mount img {
+            display: block;
+            width: 100%;
+            aspect-ratio: 1;
+            object-fit: cover;
+            border-radius: 2px;
+            background: var(--paper-2)
+        }
+        
+        .tile .cap {
+            display: block;
+            margin-top: 9px
+        }
+        
+        .tile .ti {
+            display: block;
+            font-weight: 600;
+            line-height: 1.3;
+            letter-spacing: -.01em
+        }
+        
+        .tile .sub {
+            display: block;
+            margin-top: 3px;
+            font: 400 11.5px/1.3 ui-sans-serif, sans-serif;
+            color: var(--ink-2)
+        }
+        
+        .tile .pin {
+            position: absolute
+        }
+        
+        .crumb {
+            background: none;
+            border: 0;
+            padding: 0;
+            font: inherit;
+            font-size: 14px;
+            color: var(--ink-2);
+            cursor: pointer;
+            margin-bottom: 14px
+        }
+        
+        .crumb:hover {
+            color: var(--vermilion)
+        }
+        
+        .refshot {
+            display: block;
+            width: 100%;
+            border-radius: 9px;
+            border: 1px solid var(--faint)
+        }
+        
+        .rowbtns {
+            display: flex;
+            gap: 8px;
+            margin-top: 18px;
+            flex-wrap: wrap
+        }
+        
+        .shots {
+            list-style: none;
+            margin: 0;
+            padding: 0
+        }
+        
+        .shots li {
+            display: flex;
+            gap: 15px;
+            padding: 17px 0;
+            border-top: 1px solid var(--faint)
+        }
+        
+        .shots li:first-child {
+            border-top: 0;
+            padding-top: 4px
+        }
+        
+        .shots img {
+            width: 74px;
+            height: 74px;
+            object-fit: cover;
+            border-radius: 6px;
+            flex: none;
+            border: 1px solid var(--faint)
+        }
+        
+        .shots .when {
+            font: 400 11px/1 ui-sans-serif, sans-serif;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: var(--ink-2)
+        }
+        
+        .shots .hd {
+            font-weight: 600;
+            margin-top: 5px;
+            line-height: 1.35
+        }
+        
+        .shots .note {
+            font-style: italic;
+            color: var(--ink-2);
+            font-size: 14px;
+            margin-top: 3px
+        }
+        
+        .chips {
+            display: flex;
+            gap: 7px;
+            flex-wrap: wrap;
+            margin-top: 8px
+        }
+        
+        .chips span {
+            font: 500 11px/1 ui-sans-serif, sans-serif;
+            background: var(--paper-2);
+            border-radius: 99px;
+            padding: 5px 9px;
+            color: var(--ink-2);
+            font-variant-numeric: tabular-nums
+        }
+        
+        .trends {
+            list-style: none;
+            margin: 16px 0 0;
+            padding: 0
+        }
+        
+        .trends li {
+            display: flex;
+            align-items: baseline;
+            gap: 12px;
+            padding: 11px 0;
+            border-top: 1px solid var(--faint)
+        }
+        
+        .trends .nm {
+            font: 500 12px/1 ui-sans-serif, sans-serif;
+            letter-spacing: .09em;
+            text-transform: uppercase;
+            color: var(--ink-2);
+            width: 94px;
+            flex: none
+        }
+        
+        .trends .mv {
+            font-variant-numeric: tabular-nums;
+            font-size: 16px
+        }
+        
+        .trends .mv i {
+            font-style: normal;
+            color: var(--ink-2);
+            margin: 0 5px
+        }
+        
+        .trends .tag {
+            margin-left: auto;
+            font: 500 11px/1 ui-sans-serif, sans-serif;
+            padding: 5px 9px;
+            border-radius: 99px
+        }
+        
+        .trends .closer {
+            background: #eef4ec;
+            color: var(--sap)
+        }
+        
+        .trends .further {
+            background: #fbeee9;
+            color: var(--vermilion)
+        }
+        
+        .trends .flat {
+            background: var(--paper-2);
+            color: var(--ink-2)
+        }
         
         .err {
             background: #fbeee9;
@@ -1031,6 +1279,7 @@
                 <button id="tab-grid" aria-selected="false">Sketch grid</button>
                 <button id="tab-check" aria-selected="false">Check a mix</button>
                 <button id="tab-review" aria-selected="false">Review a painting</button>
+                <button id="tab-studio" aria-selected="false">My studio</button>
             </nav>
         </div>
     </header>
@@ -1261,6 +1510,65 @@
             </div>
         </section>
 
+
+        <!-- ══════════════════════════ STUDIO ══════════════════════════ -->
+        <section class="panel" id="panel-studio" hidden>
+
+            <div id="studio-list">
+                <h1>Everything you have <em>painted</em>.</h1>
+                <p class="lede">
+                    Keep the reference, photograph the work as it goes, and watch the numbers move. It is saved on this machine and goes nowhere else.
+                </p>
+
+                <div class="split">
+                    <div class="sheet">
+                        <h2 class="sec"><span class="step">1</span> Start a piece</h2>
+                        <div class="drop" id="drop-s">
+                            <div class="ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><rect x="3" y="4"
+          width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="M4 17l5-5 4 4 3-3 4 4"/></svg></div>
+                            <b>The reference</b>
+                            <small>what you are painting from</small>
+                        </div>
+                        <input type="file" id="file-s" accept="image/jpeg,image/png,image/webp">
+
+                        <div class="field">
+                            <label for="s-title">Call it</label>
+                            <input type="text" id="s-title" placeholder="Harbour at dusk" maxlength="120">
+                        </div>
+                        <div class="field">
+                            <label for="s-medium">Painting in</label>
+                            <select id="s-medium">
+            <option value="">not sure yet</option>
+            <option value="acrylic">acrylic</option>
+            <option value="oil">oil</option>
+            <option value="watercolour">watercolour</option>
+            <option value="gouache">gouache</option>
+            <option value="pencil">pencil</option>
+            <option value="crayon">crayon</option>
+          </select>
+                        </div>
+
+                        <button class="brush" id="run-s" disabled>Keep this piece</button>
+                        <p class="aside">
+                            Photographs are stripped of their location data before they are saved.
+                        </p>
+                    </div>
+
+                    <div id="out-s">
+                        <div class="empty">
+                            <div class="frame">
+                                <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#c9bda9" stroke-width="1.1"><rect x="3" y="3" width="18" height="18" rx="1.5"/>
+                 <path d="M7 16l3.5-5 2.5 3.5 2-2.5L18 16z"/></svg>
+                            </div>
+                            <p>An empty wall. Start a piece and it will hang here.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="studio-piece" hidden></div>
+        </section>
+
     </main>
 
     <script>
@@ -1284,17 +1592,26 @@
             };
 
         /* ───────── tabs ───────── */
-        const TABS = ['pattern', 'grid', 'check', 'review'];
+        const TABS = ['pattern', 'grid', 'check', 'review', 'studio'];
         const show = n => TABS.forEach(t => {
             $('panel-' + t).hidden = t !== n;
             $('tab-' + t).setAttribute('aria-selected', t === n);
         });
-        TABS.forEach(t => $('tab-' + t).onclick = () => show(t));
+        TABS.forEach(t => $('tab-' + t).onclick = () => {
+            show(t);
+            if (t === 'studio') wall();
+        });
 
         /* ───────── file pickers ───────── */
+        const ICON0 = new Map();
+
         function dropzone(dropId, inputId, done) {
             const d = $(dropId),
                 i = $(inputId);
+            // Stash the resting icon the first time, so a zone that has been used can be
+            // put back exactly as it started rather than keeping its green tick forever.
+            const ic0 = d.querySelector('.ic');
+            if (ic0 && !ICON0.has(dropId)) ICON0.set(dropId, ic0.innerHTML);
             d.onclick = () => i.click();
             i.onchange = () => i.files[0] && done(i.files[0], d);
             ['dragenter', 'dragover'].forEach(e => d.addEventListener(e, ev => {
@@ -1474,7 +1791,8 @@
         <div class="toolbar">
           <button class="ghost" id="t-out" aria-pressed="true">Outlines</button>
           <button class="ghost" id="t-fill" aria-pressed="false">Painted</button>
-          <a class="ghost" id="dl" style="margin-left:auto;text-decoration:none">Download SVG</a>
+          <button class="ghost" id="keep" style="margin-left:auto">Keep in studio</button>
+          <a class="ghost" id="dl" style="text-decoration:none">Download SVG</a>
         </div>
         <div class="mat" id="mat">${d.svg}</div>
         <div class="counts">
@@ -1500,6 +1818,23 @@
             $('dl').download = 'pattern.svg';
             $('t-out').onclick = () => swap('outline');
             $('t-fill').onclick = () => swap('filled');
+
+            // Hands the photograph and its pattern to the studio form rather than saving
+            // silently: a piece wants a name, and the learner is the only one who has it.
+            $('keep').onclick = () => {
+                fileS = fileP;
+                pendingPattern = d;
+                marked(fileP, $('drop-s'));
+                $('s-title').value = $('s-title').value || niceName(fileP.name);
+                readyS();
+                show('studio');
+                wall();
+                window.scrollTo({
+                    top: 0,
+                    behavior: 'instant'
+                });
+                $('s-title').focus();
+            };
 
             /* the reason this renderer emits SVG: every region is addressable */
             const canvas = $('canvas');
@@ -1680,6 +2015,21 @@ dropzone('drop-r2','file-r2',(f,d)=>{fileR2=f; marked(f,d); readyR();});
 const NICE = {colour_accuracy:'Colour', value_structure:'Values',
               lightness_bias:'Lightness', chroma_bias:'Saturation'};
 
+// Shared by the one-off review and the studio timeline, so a measurement is
+// never formatted two different ways in two places.
+function figure(m){
+  // Correlation as a percentage: "1 correlation" is meaningless next to an
+  // explanation that already reads "matches about 100%".
+  if (m.unit === 'correlation') return `${Math.round(Math.max(0, m.value)*100)}<span
+    style="font-size:13px;color:var(--ink-2);font-weight:400">%</span>`;
+  const sign = (m.unit === 'L*' || m.unit === 'C*') && m.value > 0 ? '+' : '';
+  return `${sign}${m.value}<span
+    style="font-size:12px;color:var(--ink-2);font-weight:400"> ${m.unit}</span>`;
+}
+const plain = m => (m.unit === 'correlation')
+  ? Math.round(Math.max(0, m.value)*100) + '%'
+  : m.value + ' ' + m.unit;
+
 $('run-r').onclick = async ()=>{
   const btn=$('run-r'); btn.disabled=true; btn.innerHTML='<span class="load"></span>Comparing…';
   const body=new FormData();
@@ -1688,15 +2038,6 @@ $('run-r').onclick = async ()=>{
     const res=await fetch('/critique',{method:'POST',body});
     const d=await res.json();
     if(!res.ok) throw new Error(d.detail||'Something went wrong');
-    const figure = m => {
-      // Correlation as a percentage: "1 correlation" is meaningless next to an
-      // explanation that already reads "matches about 100%".
-      if (m.unit === 'correlation') return `${Math.round(Math.max(0, m.value)*100)}<span
-        style="font-size:13px;color:var(--ink-2);font-weight:400">%</span>`;
-      const sign = (m.unit === 'L*' || m.unit === 'C*') && m.value > 0 ? '+' : '';
-      return `${sign}${m.value}<span
-        style="font-size:12px;color:var(--ink-2);font-weight:400"> ${m.unit}</span>`;
-    };
     const rows=d.measurements.map(m=>`
       <li>
         <div class="top">
@@ -1719,6 +2060,240 @@ $('run-r').onclick = async ()=>{
   }catch(e){ $('out-r').innerHTML=`<div class="err">${e.message}</div>`; }
   finally{ btn.disabled=false; btn.textContent='Review it'; }
 };
+
+/* ───────── my studio ───────── */
+let fileS = null, pendingPattern = null;
+
+const esc = t => String(t ?? '').replace(/[&<>"]/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const niceName = n => n.replace(/\.[a-z0-9]+$/i,'').replace(/[_-]+/g,' ').trim().slice(0,120);
+const when = iso => new Date(iso).toLocaleDateString(undefined,
+  {day:'numeric', month:'short', year:'numeric'});
+
+async function api(url, opts){
+  const res = await fetch(url, opts);
+  if(res.status === 204) return null;
+  const d = await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(d.detail || 'Something went wrong');
+  return d;
+}
+
+/* A delete that asks twice, rather than a browser confirm() — the native
+   dialog blocks the page and looks nothing like the rest of this. */
+function arm(btn, label, run){
+  let ready = false, timer = null;
+  btn.onclick = async () => {
+    if(!ready){
+      ready = true; btn.textContent = 'Really?'; btn.style.color = 'var(--vermilion)';
+      timer = setTimeout(()=>{ ready=false; btn.textContent=label; btn.style.color=''; }, 4000);
+      return;
+    }
+    clearTimeout(timer);
+    btn.disabled = true;
+    try{ await run(); }
+    catch(e){ btn.disabled=false; ready=false; btn.textContent=label; alertish(e.message); }
+  };
+}
+const alertish = msg => {
+  const box = document.createElement('div');
+  box.className = 'err'; box.style.marginTop = '14px'; box.textContent = msg;
+  ($('studio-piece').hidden ? $('out-s') : $('studio-piece')).prepend(box);
+  setTimeout(()=>box.remove(), 6000);
+};
+
+const readyS = () => { $('run-s').disabled = !(fileS && $('s-title').value.trim()); };
+dropzone('drop-s','file-s',(f,d)=>{
+  fileS = f; marked(f,d);
+  if(!$('s-title').value) $('s-title').value = niceName(f.name);
+  readyS();
+});
+$('s-title').oninput = readyS;
+
+$('run-s').onclick = async () => {
+  const btn = $('run-s');
+  btn.disabled = true; btn.innerHTML = '<span class="load"></span>Hanging it up…';
+  const body = new FormData();
+  body.append('image', fileS);
+  body.append('title', $('s-title').value);
+  if($('s-medium').value) body.append('medium', $('s-medium').value);
+  if(pendingPattern) body.append('pattern', JSON.stringify(pendingPattern));
+  try{
+    const piece = await api('/gallery/pieces', {method:'POST', body});
+    fileS = null; pendingPattern = null;
+    $('s-title').value = '';
+    $('s-medium').value = '';
+    resetDrop('drop-s', 'The reference', 'what you are painting from');
+    await wall();
+    openPiece(piece.id);
+  }catch(e){ alertish(e.message); }
+  finally{ btn.disabled = false; btn.textContent = 'Keep this piece'; readyS(); }
+};
+
+function resetDrop(id, title, sub){
+  const d = $(id);
+  d.classList.remove('has');
+  const ic = d.querySelector('.ic');
+  if(ic && ICON0.has(id)) ic.innerHTML = ICON0.get(id);
+  d.querySelector('b').textContent = title;
+  d.querySelector('small').textContent = sub;
+  $('file-' + id.split('-')[1]).value = '';
+}
+
+async function wall(){
+  $('studio-piece').hidden = true;
+  $('studio-list').hidden = false;
+  try{
+    const list = await api('/gallery/pieces');
+    if(!list.length){
+      $('out-s').innerHTML = `
+        <div class="empty">
+          <div class="frame">
+            <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#c9bda9"
+                 stroke-width="1.1"><rect x="3" y="3" width="18" height="18" rx="1.5"/>
+                 <path d="M7 16l3.5-5 2.5 3.5 2-2.5L18 16z"/></svg>
+          </div>
+          <p>An empty wall. Start a piece and it will hang here.</p>
+        </div>`;
+      return;
+    }
+    $('out-s').innerHTML = `<div class="tiles fade">${list.map(pc => `
+      <button class="tile" data-id="${pc.id}">
+        <span class="mount"><img src="${pc.thumbnail_url}" alt=""></span>
+        <span class="cap">
+          <span class="ti">${esc(pc.title)}</span>
+          <span class="sub">${pc.attempts
+            ? pc.attempts + (pc.attempts === 1 ? ' attempt' : ' attempts')
+            : 'not started'}${pc.medium ? ' · ' + esc(pc.medium) : ''}</span>
+        </span>
+      </button>`).join('')}</div>`;
+    document.querySelectorAll('.tile').forEach(b => b.onclick = () => openPiece(b.dataset.id));
+  }catch(e){ $('out-s').innerHTML = `<div class="err">${e.message}</div>`; }
+}
+
+async function openPiece(id){
+  let piece, prog = null;
+  try{
+    piece = await api('/gallery/pieces/' + id);
+    // Only ask for progress once there is something to compare; the endpoint
+    // refuses an empty piece rather than inventing a zero.
+    if(piece.attempts.length) prog = await api(`/gallery/pieces/${id}/progress`);
+  }catch(e){ alertish(e.message); return; }
+
+  $('studio-list').hidden = true;
+  $('studio-piece').hidden = false;
+  window.scrollTo({top:0, behavior:'instant'});
+
+  const shots = piece.attempts.slice().reverse().map((a, i) => `
+    <li>
+      <img src="${a.thumbnail_url}" alt="">
+      <div style="min-width:0;flex:1">
+        <div class="when">${when(a.created_at)}${i === 0 && piece.attempts.length > 1
+          ? ' · latest' : ''}</div>
+        <div class="hd">${esc(a.message)}</div>
+        ${a.note ? `<div class="note">“${esc(a.note)}”</div>` : ''}
+        <div class="chips">${a.measurements.map(m =>
+          `<span>${NICE[m.key] || m.key} ${plain(m)}</span>`).join('')}</div>
+      </div>
+      <button class="crumb" data-kill="${a.id}" style="margin:0;align-self:flex-start">Remove</button>
+    </li>`).join('');
+
+  const trendRow = t => {
+    const cls = t.improved === true ? 'closer' : t.improved === false ? 'further' : 'flat';
+    const word = t.improved === true ? 'closer' : t.improved === false ? 'further' : 'much the same';
+    const fmt = v => t.unit === 'correlation' ? Math.round(Math.max(0, v) * 100) + '%' : v;
+    return `<li>
+      <span class="nm">${NICE[t.key] || t.key}</span>
+      <span class="mv">${fmt(t.first)}<i>→</i>${fmt(t.latest)}</span>
+      <span class="tag ${cls}">${word}</span>
+    </li>`;
+  };
+
+  $('studio-piece').innerHTML = `
+    <button class="crumb" id="back">← Back to the wall</button>
+    <h1 style="margin-bottom:6px">${esc(piece.title)}</h1>
+    <p class="lede">${piece.medium ? esc(piece.medium) + ' · ' : ''}started ${when(piece.created_at)}${
+      piece.has_pattern ? ' · pattern kept' : ''}</p>
+
+    <div class="split">
+      <div>
+        <div class="sheet">
+          <h2 class="sec">The reference</h2>
+          <img class="refshot" src="${piece.image_url}" alt="">
+          <div class="rowbtns">
+            <button class="ghost" id="rename">Rename</button>
+            <button class="ghost" id="kill" style="margin-left:auto">Delete piece</button>
+          </div>
+        </div>
+
+        <div class="sheet" style="margin-top:20px">
+          <h2 class="sec">Where it stands today</h2>
+          <div class="drop" id="drop-a" style="padding:20px 10px">
+            <b style="font-size:14px">Photograph of your painting</b>
+            <small>square-on, cropped to the edges</small>
+          </div>
+          <input type="file" id="file-a" accept="image/jpeg,image/png,image/webp">
+          <div class="field">
+            <label for="a-note">A note to yourself</label>
+            <input type="text" id="a-note" maxlength="500" placeholder="second sitting, reworked the sky">
+          </div>
+          <button class="brush" id="run-a" disabled>Save this attempt</button>
+        </div>
+      </div>
+
+      <div>
+        ${prog && prog.trends.length ? `
+          <div class="sheet fade">
+            <h2 class="sec">Since your first attempt</h2>
+            <p style="margin:0;color:var(--ink-2)">${esc(prog.summary)}</p>
+            <ul class="trends">${prog.trends.map(trendRow).join('')}</ul>
+            <p class="aside">
+              These say the painting moved closer to its reference. They do not say
+              it got better — that is not a thing software can measure.
+            </p>
+          </div>` : ''}
+
+        <div class="sheet ${prog && prog.trends.length ? '' : 'fade'}"
+             style="margin-top:${prog && prog.trends.length ? '20px' : '0'}">
+          <h2 class="sec">Every sitting</h2>
+          ${piece.attempts.length
+            ? `<ul class="shots">${shots}</ul>`
+            : `<p style="margin:0;color:var(--ink-2);font-style:italic">
+                 Nothing photographed yet. Save an attempt and the comparison starts.</p>`}
+        </div>
+      </div>
+    </div>`;
+
+  $('back').onclick = wall;
+
+  $('rename').onclick = async () => {
+    const title = window.prompt('Call it something else', piece.title);
+    if(!title) return;
+    const body = new FormData(); body.append('title', title);
+    try{ await api(`/gallery/pieces/${id}`, {method:'PATCH', body}); openPiece(id); }
+    catch(e){ alertish(e.message); }
+  };
+
+  arm($('kill'), 'Delete piece', async () => {
+    await api(`/gallery/pieces/${id}`, {method:'DELETE'});
+    wall();
+  });
+  document.querySelectorAll('[data-kill]').forEach(b => arm(b, 'Remove', async () => {
+    await api(`/gallery/attempts/${b.dataset.kill}`, {method:'DELETE'});
+    openPiece(id);
+  }));
+
+  let fileA = null;
+  dropzone('drop-a','file-a',(f,d)=>{ fileA = f; marked(f,d); $('run-a').disabled = false; });
+  $('run-a').onclick = async () => {
+    const btn = $('run-a');
+    btn.disabled = true; btn.innerHTML = '<span class="load"></span>Comparing…';
+    const body = new FormData();
+    body.append('image', fileA);
+    if($('a-note').value.trim()) body.append('note', $('a-note').value);
+    try{ await api(`/gallery/pieces/${id}/attempts`, {method:'POST', body}); openPiece(id); }
+    catch(e){ alertish(e.message); btn.disabled = false; btn.textContent = 'Save this attempt'; }
+  };
+}
 
 /* ───────── small helpers ───────── */
 function ink(hex){
