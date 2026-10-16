@@ -574,3 +574,102 @@ class TestGalleryProgress:
 
     def test_progress_on_a_missing_piece_is_404(self, gallery):
         assert client.get("/gallery/pieces/nope/progress").status_code == 404
+
+
+class TestMediumAndLevel:
+    def test_the_pickers_can_be_populated(self):
+        mediums = client.get("/mediums").json()
+        levels = client.get("/levels").json()
+        assert {m["id"] for m in mediums} >= {"acrylic", "watercolour", "pencil"}
+        assert [level["id"] for level in levels] == ["beginner", "improving", "confident"]
+        assert all(o["name"] for o in mediums + levels)
+
+    def test_guidance_can_be_read_before_any_upload(self):
+        body = client.get("/guidance", params={"medium": "watercolour", "level": "beginner"}).json()
+        assert body["excluded_paint_ids"] == ["ti-white"]
+        assert body["max_components"] == 2
+        assert body["notes"]
+
+    def test_an_unknown_medium_is_a_400_not_a_500(self):
+        assert client.get("/guidance", params={"medium": "tempera"}).status_code == 400
+        response = client.post(
+            "/patterns",
+            files={"image": ("scene.png", scene(), "image/png")},
+            params={"medium": "tempera", "max_dimension": 240},
+        )
+        assert response.status_code == 400
+
+    def test_watercolour_never_asks_for_white(self):
+        """The paper is the white; a tube of it is not in the painter's hand."""
+        body = client.post(
+            "/patterns",
+            files={"image": ("scene.png", scene(), "image/png")},
+            params={"medium": "watercolour", "max_dimension": 240, "colors": 5},
+        ).json()
+        for colour in body["palette"]:
+            assert all(step["paint_id"] != "ti-white" for step in colour["mix"])
+            assert "water" in colour["instructions"]
+
+    def test_acrylic_still_uses_white(self):
+        body = client.post(
+            "/patterns",
+            files={"image": ("scene.png", scene(), "image/png")},
+            params={"medium": "acrylic", "max_dimension": 240, "colors": 6},
+        ).json()
+        used = {s["paint_id"] for c in body["palette"] for s in c["mix"]}
+        assert "ti-white" in used
+
+    def test_a_pencil_pattern_is_a_value_map_not_a_colour_one(self):
+        """Graphite has no hue, so naming a pigment would be meaningless."""
+        body = client.post(
+            "/patterns",
+            files={"image": ("scene.png", scene(), "image/png")},
+            params={"medium": "pencil", "max_dimension": 240, "colors": 4},
+        ).json()
+        for colour in body["palette"]:
+            assert colour["mix"] is None
+            assert "part" not in colour["instructions"].lower()
+            assert "tone" in colour["instructions"] or "bare paper" in colour["instructions"]
+            # Hue is stripped before quantizing, so every swatch is a grey.
+            r, g, b = (int(colour["hex"][i:i + 2], 16) for i in (1, 3, 5))
+            assert max(r, g, b) - min(r, g, b) <= 4, colour["hex"]
+
+    def test_the_level_sets_the_colour_count_when_none_is_given(self):
+        def colours(level):
+            return client.post(
+                "/patterns",
+                files={"image": ("scene.png", scene(), "image/png")},
+                params={"level": level, "max_dimension": 240, "include_recipes": False},
+            ).json()["colors"]
+
+        assert colours("beginner") < colours("confident")
+
+    def test_an_explicit_colour_count_overrides_the_level(self):
+        body = client.post(
+            "/patterns",
+            files={"image": ("scene.png", scene(), "image/png")},
+            params={"level": "beginner", "colors": 10, "max_dimension": 240,
+                    "include_recipes": False},
+        ).json()
+        assert body["colors"] == 10
+
+    def test_the_response_says_which_rules_it_followed(self):
+        body = client.post(
+            "/patterns",
+            files={"image": ("scene.png", scene(), "image/png")},
+            params={"medium": "oil", "level": "beginner", "max_dimension": 240,
+                    "include_recipes": False},
+        ).json()
+        assert body["medium"] == "oil"
+        assert body["level"] == "beginner"
+        assert any("oil" in n.lower() for n in body["notes"])
+
+    def test_a_palette_emptied_by_the_medium_is_refused_clearly(self):
+        """Watercolour plus a white-only palette leaves nothing to mix."""
+        response = client.post(
+            "/patterns",
+            files={"image": ("scene.png", scene(), "image/png")},
+            params={"medium": "watercolour", "paints": "ti-white", "max_dimension": 240},
+        )
+        assert response.status_code == 400
+        assert "watercolour" in response.json()["detail"].lower()
