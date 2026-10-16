@@ -17,7 +17,7 @@ from dataclasses import asdict, dataclass
 import cv2
 import numpy as np
 
-from .color.space import lab_to_rgb_array
+from .color.space import lab_to_rgb_array, rgb_to_lab_array
 from .imaging.contours import extract_contours
 from .imaging.labeling import compute_label_points
 from .imaging.quantize import presmooth, quantize
@@ -47,6 +47,7 @@ class PatternParams:
     flat_smoothing: int = 17          # wider vote kernel in flat areas such as sky
     edge_percentile: float = 70.0     # below this gradient percentile counts as flat
     min_region_area: int = 90         # px; below this a region is merged away
+    monochrome: bool = False          # strip hue and quantize value alone
     simplify_epsilon: float = 0.75    # Douglas-Peucker tolerance
     contour_smoothing: int = 2        # corner-cutting passes; 0 disables
     contour_smoothing_max_edge: float = 9.0  # only cut corners between short edges
@@ -77,6 +78,15 @@ def generate_pattern(image_rgb: np.ndarray, params: PatternParams | None = None)
         raise ValueError(f"expected an (H, W, 3) RGB image, got {image_rgb.shape}")
 
     working = _fit_within(np.ascontiguousarray(image_rgb, dtype=np.uint8), params.max_dimension)
+
+    if params.monochrome:
+        # A graphite study has no hue, so quantizing colour would split one tone
+        # into several numbers because the hues differ. Flattening a* and b* in
+        # Lab — rather than a channel average — keeps the *perceived* lightness,
+        # which is the thing a value study is actually copying.
+        lab = rgb_to_lab_array(working)
+        lab[..., 1:] = 0.0
+        working = lab_to_rgb_array(lab)
 
     if params.presmooth_diameter > 0:
         working = presmooth(
