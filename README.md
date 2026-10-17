@@ -1,286 +1,307 @@
 # ArtMentorAI
 
-An AI painting tutor. Give it a photograph and it produces a printable
-paint-by-numbers pattern, works out how to mix every colour in it from the
-paints you own, and checks the paint you actually mixed from a photo.
+An AI painting tutor that turns a photograph into a numbered pattern, tells you
+which paints to mix to hit each colour, and measures how close your attempt
+came — in colour, in value, and over time.
 
-**169 tests.** No model training, no GPU, no dataset — see
-[Why there is no model](#why-there-is-no-model).
+It runs on a laptop with no GPU, no API keys, and no account.
 
----
-
-## Quickstart
-
-```bash
-python -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+```
 pip install -e ".[dev]"
+uvicorn artmentor.api.app:app --reload
 ```
 
-Generate a pattern from an image:
-
-```bash
-python scripts/make_sample_image.py sample.png
-python -m artmentor.cli sample.png -o out/ --colors 12
-```
-
-Run the API and open http://127.0.0.1:8000/docs for an interactive page
-generated from the code:
-
-```bash
-python -m uvicorn artmentor.api.app:app --reload
-```
-
-Tests and linting:
-
-```bash
-pytest -q
-ruff check .
-```
+Then open <http://127.0.0.1:8000>.
 
 ---
 
-## What it does
+## The decision that explains the rest of the codebase
 
-### Photo to printable pattern
+**No model is trained, and nothing calls out to a language model.**
 
-Quantizes an image to N paintable colours, builds contiguous regions, merges
-away anything too small to paint, and renders numbered outlines as SVG.
+That is not a shortcut taken to ship faster. Every feature here has a
+computable answer:
 
-`python -m artmentor.cli photo.jpg -o out/ --colors 12` writes `pattern.svg`
-(the printable outlines), `preview.svg` (the same regions filled),
-`quantized.png`, and `palette.json`. Difficulty is `--colors` and `--min-area`
-together.
-
-### Mixing recipes for every number
-
-For each colour in the pattern, which paints to combine and in what ratio:
-
-```python
-from artmentor.core.recipes import recipes_for_pattern, format_mixing_guide
-from artmentor.core.paints import STARTER_ACRYLICS
-
-print(format_mixing_guide(recipes_for_pattern(pattern, STARTER_ACRYLICS)))
-```
-
-```
-   1  #4e8a46  8 parts Cadmium Yellow + 4 parts Yellow Ochre + 1 part Phthalo Blue   18%  match
-   4  #b3d7ee  40 parts Titanium White + 1 part Phthalo Blue (green shade)           17%  match
-~  5  #3a6b38  8 parts Cadmium Yellow + 2 parts Phthalo Blue + 1 part Burnt Umber    13%  close
-```
-
-A `~` means the palette cannot actually reach that colour and this is the
-closest available. Saying so matters: a beginner who follows good instructions
-and gets a visibly different colour concludes they can't paint.
-
-### Checking a mix from a photo
-
-```python
-from artmentor.core.swatch import check_shade
-
-result = check_shade(photo, target_lab, white_region=grey_card_box)
-print(result.message())   # "Close. add more yellow would nail it."
-```
-
-### HTTP API
-
-| Endpoint | Purpose |
+| Feature | How it is solved |
 |---|---|
-| `GET /health` | liveness |
-| `GET /paints` | the paint catalog, for a "what do you own?" picker |
-| `POST /patterns` | image → pattern SVG, palette, and mixing recipes |
-| `POST /shade-check` | photo of a mix + target → verdict and correction |
+| Paint-by-numbers pattern | k-means in CIELAB, connected components, contour tracing |
+| "What do I mix to get this colour?" | Kubelka–Munk subtractive mixing, inverted by enumeration |
+| "Is this shade right?" | CIEDE2000 against a white-balanced photograph |
+| "Did my painting improve?" | Fidelity metrics against the reference, stored over time |
+
+Training a network to approximate these would be slower, less accurate, and
+impossible to debug. When a recipe is wrong today, you can read the spectrum
+that produced it. `core/interfaces.py` defines an abstract class for every
+capability so a model can be swapped in later — segmentation is the obvious
+first candidate — without touching anything around it.
+
+**Colour is never compared in RGB.** The average of blue and yellow in RGB is
+exactly `#808080`, a dead grey; on a palette it is green. Every comparison in
+this codebase happens in CIELAB, and every judgement a learner acts on uses
+CIEDE2000.
 
 ---
 
-## The one architectural rule
+## What works today
 
-**Everything under `artmentor/core/` is pure Python — no web framework, no
-database, no HTTP.** It must stay runnable from a plain script with no server.
-The CLI is a living proof of that, and `tests/test_api.py` enforces it
-mechanically: if `import cv2` ever appears in the API layer, that test fails.
+- **Patterns.** Photograph in, numbered regions out, as SVG with every region
+  addressable so the UI can highlight one on hover. Content-adaptive
+  despeckling keeps a gradient sky clean without dissolving an eye.
+- **Mixing.** Real subtractive pigment mixing via Kubelka–Munk, with
+  reflectance recovered from sRGB by constrained optimisation. The inverse
+  problem — "which paints, in what whole-number ratio, hit this target?" — is
+  solved by enumerating ratios a human can actually measure out by hand.
+- **Shade checking.** Photograph a mix, get told how far off it is and which
+  way to push it. Print the greyscale calibration card from
+  `/calibration-card.svg` and include it in frame; without it the answer still
+  comes back but says it is a rough read.
+- **Grid method.** A grid overlay for copying, with the cell size in
+  millimetres on A4 — the number you actually use at a drawing board — and a
+  warning when the image's proportions will not divide into square cells.
+- **Feedback.** Four measurements against the reference, and exactly one
+  instruction. See "What this refuses to do" below.
+- **Studio.** Save a piece, photograph it each sitting, and see the numbers
+  move. Everything is stored on your machine.
+- **Mediums and skill levels.** Not advice text: constraints the pipeline
+  obeys. Watercolour drops white from the palette because the paper is the
+  white; graphite gets a value map instead of a colour one; a beginner gets
+  fewer colours and two-pigment mixes.
+
+**Not built yet:** the Loomis head construction. The grid method is the only
+sketching mode so far.
+
+---
+
+## What this refuses to do
+
+`core/critique.py` does **not** judge whether a painting is good. There is no
+ground truth for that, professionals disagree, and a model trained on someone
+else's taste would hand a beginner a confident verdict it has no right to. A
+wrong discouraging critique is the exact opposite of what a tutor is for.
+
+What it measures instead is **fidelity to a stated target** — where your
+painting differs from what you were copying, and by how much. Every number is
+computed, explainable, and checkable against your own eyes. That reframing is
+also what makes progress trackable: "your values were 12% off last week and 6%
+off today" is a real statement in a way that an aesthetic score never is.
+
+A test enforces this. If anyone adds "beautiful", "talented" or a score out of
+ten, the suite fails and makes them read the docstring explaining why.
+
+---
+
+## Architecture
+
+One rule, and a test that enforces it:
+
+> `artmentor/core/` is pure Python. No web framework, no database, no HTTP.
+
+`tests/test_api.py::test_api_does_not_reimplement_core` reads `app.py` as text
+and fails if `import cv2`, `from skimage` or `delta_E` ever appear in it. The
+API layer translates; it does not compute.
+
+This is what lets the colour science be tested in milliseconds with no
+fixtures, and what will let the storage layer move to Postgres without touching
+a single formula.
 
 ```
 artmentor/
-  core/                      pure Python, no framework
-    types.py                 plain dataclasses that cross the boundary
-    interfaces.py            abstract bases for every swappable capability
-    pipeline.py              orchestration; owns PIPELINE_VERSION
-    paints.py                the paint catalog
-    recipes.py               joins patterns to mixing recipes
-    swatch.py                reads paint colour out of a photograph
-    color/
-      space.py               sRGB <-> CIELAB
-      difference.py          CIEDE2000 and the verdicts shown to users
-      spectral.py            reflectance recovery, Kubelka-Munk K/S
-      mixing.py              forward: paints + ratios -> colour
-      inverse.py             inverse: colour -> paints + ratios
-    imaging/
-      loader.py              SECURITY BOUNDARY — all untrusted images enter here
-      quantize.py            Lab k-means
-      segment.py             adaptive despeckling, region merging
-      labeling.py            where the number goes
-      contours.py            outlines, holes, corner-preserving smoothing
-    render/svg.py            SVG output
-  api/app.py                 FastAPI. Thin. Calls core, never imports cv2.
-  cli.py
-tests/                       169 tests
-scripts/
+├── core/                  pure computation — no framework, no I/O beyond images
+│   ├── color/
+│   │   ├── space.py       sRGB ↔ CIELAB
+│   │   ├── difference.py  CIEDE2000
+│   │   ├── spectral.py    reflectance recovery, 380–730nm at 10nm
+│   │   ├── mixing.py      Kubelka–Munk forward mixing
+│   │   └── inverse.py     "which paints make this?" by ratio enumeration
+│   ├── imaging/
+│   │   ├── loader.py      ← the security boundary. Read this one first.
+│   │   ├── quantize.py    bilateral presmooth + k-means in Lab
+│   │   ├── segment.py     content-adaptive despeckling, region merging
+│   │   ├── labeling.py    label placement by pole of inaccessibility
+│   │   └── contours.py    corner-preserving smoothing
+│   ├── render/            svg.py, grid.py, calibration.py
+│   ├── paints.py          the starter catalogue (12 student acrylics)
+│   ├── recipes.py         a pattern's palette → mixing instructions
+│   ├── swatch.py          white balance and shade comparison
+│   ├── measure.py         tooling to replace the catalogue with real data
+│   ├── critique.py        fidelity metrics
+│   ├── mediums.py         medium and skill level as pipeline constraints
+│   ├── pipeline.py        photograph → Pattern
+│   ├── types.py           the dataclasses that cross module boundaries
+│   └── interfaces.py      abstract classes for every swappable capability
+├── store/
+│   └── gallery.py         SQLite + content-addressed media
+├── api/
+│   ├── app.py             FastAPI; translation only
+│   └── static/index.html  the whole frontend, one file, no build step
+└── cli.py                 the pipeline with no server and no database
 ```
 
-Every AI capability sits behind an interface in `core/interfaces.py`
-(`Segmenter`, `PigmentMixer`, `FeedbackProvider`) so a better implementation
-can be swapped in behind a feature flag without touching the API, the database,
-or a frontend.
+### Security
+
+`core/imaging/loader.py` is the only sanctioned way an image enters the system.
+Every image is untrusted input being fed to a C parser, so it enforces four
+things that are easy to skip and expensive to retrofit:
+
+1. Format is validated by **magic bytes**, never by filename or content type —
+   both are attacker-controlled.
+2. Decompressed pixel count is capped **before decode**. A decompression bomb
+   is a few kilobytes of PNG that expands to tens of gigabytes of RAM.
+3. **EXIF is stripped.** A phone photo of a painting carries the GPS
+   coordinates of the painter's home. Orientation is applied, then all metadata
+   is discarded.
+4. Every image is **re-encoded** through a canonical RGB path, dropping
+   trailing payloads and embedded thumbnails.
+
+`encode_image()` is the inverse, and the gallery stores *that* — never the
+bytes a client uploaded. A test uploads a JPEG with a marker buried in its
+metadata and asserts those bytes are absent from what the server returns.
+
+### Storage
+
+One SQLite file and a `media/` folder, so the whole gallery can be backed up by
+copying one directory. Images are stored under the SHA-256 of their bytes,
+never under a name anyone supplied — that removes path traversal as a class of
+bug rather than defending against it, and deduplicates for free. Deletion is
+refcounted across both tables.
+
+Measurements are stored as JSON rather than columns, so `critique.py` can grow
+a fifth measure without a migration and without silently dropping measures
+written by a newer version.
+
+Attempts are critiqued **when saved**, not when read. `critique.py` will
+change, and a learner's history must keep saying what it said at the time.
 
 ---
 
-## Why there is no model
+## The API
 
-Nothing here is trained, and that is the correct answer rather than a shortcut.
+Interactive docs at `/docs` once the server is running.
 
-Pattern generation, colour mixing and shade comparison all have computable
-correct answers. Training a model to approximate arithmetic would be slower,
-less accurate, unexplainable to a user, and impossible to debug. The only
-genuine ML problem in the product vision is critiquing a finished painting, and
-on day one there is no training data for it.
+```
+GET    /health
+GET    /paints                              the starter catalogue
+GET    /mediums  /levels  /guidance         what a medium and level change
+POST   /patterns                            image → numbered pattern + recipes
+GET    /mix                                 predict the colour of a mix
+POST   /grid                                grid overlay for copying
+POST   /critique                            reference + attempt → measurements
+POST   /shade-check                         photo of a mix → verdict
+GET    /calibration-card.svg                the printable grey card
 
-The intended progression:
+POST   /gallery/pieces                      start a piece
+GET    /gallery/pieces                      the wall
+GET    /gallery/pieces/{id}                 one piece and its attempts
+PATCH  /gallery/pieces/{id}                 rename
+DELETE /gallery/pieces/{id}
+POST   /gallery/pieces/{id}/attempts        photo → critiqued and saved
+DELETE /gallery/attempts/{id}
+GET    /gallery/pieces/{id}/progress        latest attempt vs the first
+GET    /gallery/images/{digest}[/thumb]
+```
 
-| Tier | What | Status |
-|---|---|---|
-| A | Deterministic CV and colour science | **built** |
-| B | Pretrained models off the shelf (segmentation, pose) | later |
-| C | Hosted vision-language model for conversational critique | later |
-| D | Models fine-tuned on data this product generates | much later |
+The gallery lives in `~/.artmentor` by default; set `ARTMENTOR_DATA` to move it.
 
-The asset worth building is the dataset Tier D needs. Every (target colour →
-photographed mix → correction → next attempt) chain is a labelled training
-example nobody else has. Logging that is worth doing long before it is useful.
+### Without a server
+
+```
+python -m artmentor.cli photo.jpg -o out/ --colors 12
+```
+
+This exists so the pipeline can be exercised with no server, no database and no
+frontend. If it stops working, the `core` boundary has been broken.
+
+---
+
+## Tests
+
+```
+pytest -q        # 397 tests
+ruff check .
+```
+
+| File | Tests | File | Tests |
+|---|---|---|---|
+| `test_api.py` | 63 | `test_critique.py` | 26 |
+| `test_gallery.py` | 45 | `test_measure.py` | 22 |
+| `test_mediums.py` | 44 | `test_color.py` | 22 |
+| `test_mixing.py` | 39 | `test_pipeline.py` | 21 |
+| `test_grid.py` | 30 | `test_inverse.py` | 20 |
+| `test_swatch.py` | 19 | `test_calibration.py` | 18 |
+| `test_loader.py` | 16 | `test_recipes.py` | 12 |
+
+The test count doubles as a drift detector: if your local number is lower than
+397, a file did not land where you thought it did.
 
 ---
 
 ## Known limitations
 
-Documented here and in the code, rather than discovered later.
+Written down because they are real, not because they are small.
 
-**The paint catalog is eyeballed, not measured.** Every colour in
-`core/paints.py` is an approximation of a typical student acrylic. Good enough
-to develop against; not good enough to give someone advice about their actual
-tubes. Replacing it means photographing swatches under controlled light beside
-a calibrated reference and recording the Lab values.
+**The paint catalogue is eyeballed.** The twelve starter acrylics are
+approximate sRGB values converted to Lab, not measured pigments. Four of the
+limitations below trace back to this single fact. `core/measure.py` and the
+calibration card exist to fix it: photograph real swatches under controlled
+light and `to_catalog_entry()` emits a replacement entry. It is an afternoon
+with paint, not a coding task.
 
-**Mixing uses single-constant Kubelka-Munk.** Full K-M tracks absorption and
-scattering separately, and both cannot be recovered from an sRGB value, so
-every pigment is assumed to scatter equally. That is badly wrong for titanium
-white. Each paint's `tinting_strength` compensates, which is why white needs a
-value around 6, but saturated reds still tint less than real paint does.
+**No job queue.** Routes are declared `def`, so Starlette runs them in a worker
+thread and the event loop keeps serving. That is enough for development and
+light use and is *not* enough for production — there is no timeout, no memory
+ceiling and no backpressure, so a flood of large images will exhaust the pool.
+Celery or RQ before any public deployment.
 
-**Inferred spectra drift on selective pigments.** A spectrum reconstructed from
-three numbers is broader than a real pigment's. Warm mixes behave well;
-ultramarine plus yellow comes out teal where it should be olive. Pale tints are
-the weak spot — cream reaches only about dE 5.
+**Critique assumes alignment.** The attempt is scaled to the reference's
+dimensions and compared directly, which holds for a photograph taken square-on
+and cropped to the artwork. Perspective correction via feature matching would
+lift that restriction and is a sizeable piece of work.
 
-All three have the same fix: measured paint spectra.
+**Monochrome palettes can duplicate a tone.** A graphite pattern may give two
+numbers to values no eye can separate. Merging them needs the region merger to
+understand value adjacency.
 
-**The API is not production-ready under load.** Endpoints run in FastAPI's
-threadpool, with no timeout, no memory ceiling and no backpressure. A job queue
-(Celery or RQ) is required before this faces real users.
+**Single user, no accounts.** There is no owner column and no authentication.
+Adding accounts means a `user_id` on two tables and a filter on every query —
+which is why every query goes through a method rather than being written inline
+at the call site.
 
-**Nothing persists.** No users, no gallery, no progress tracking.
-
----
-
-## Security
-
-`core/imaging/loader.py` is the only sanctioned entry point for user images and
-is a security boundary, not a convenience wrapper. Untrusted images are being
-fed to C-based parsers, so it enforces:
-
-- format validated by **magic bytes**, never file extension or client-supplied
-  content type — both are attacker-controlled
-- **decompressed pixel count capped before decode** — a decompression bomb is a
-  few KB of PNG that expands to tens of GB of RAM
-- **EXIF stripped** — phone photos carry the GPS coordinates of the user's home;
-  orientation is applied first, then all metadata discarded
-- **canonical re-encode** of every image, dropping trailing payloads
-
-Pillow and OpenCV are pinned for this reason; watch their advisories.
-
-Before any public deployment: the job queue above, object-level authorization
-enforced at the query layer, short-lived signed URLs for images, and a decision
-on under-13 users, which has COPPA and GDPR-K consequences for the whole data
-model.
-
----
-
-## Notes on the implementation
-
-Decisions that are easy to get wrong and expensive to reverse.
-
-**All colour comparison happens in CIELAB with CIEDE2000, never RGB.** RGB
-distance does not match perception. Averaging blue and yellow in RGB gives grey
-where paint gives green.
-
-**Label placement uses the pole of inaccessibility, not the centroid.** The
-centroid of a crescent falls outside the shape, putting the printed digit in a
-neighbouring region. The distance transform gives both the best interior point
-and the room available, which then drives font size.
-
-**Despeckling adapts to local content.** A wide neighbourhood vote is needed to
-straighten the boundary left by quantizing a sky gradient, but the same wide
-vote erases a pupil. The filter votes wide where the source is flat and narrow
-where there is real structure.
-
-**Contour smoothing spares structural corners.** Noise and intentional corners
-separate by scale, so a vertex is only cut when both adjacent edges are short.
-Douglas-Peucker is the wrong tool — it preserves extreme points, keeping zigzag
-tips while faceting smooth curves.
-
-**Inverse mixing enumerates executable ratios.** Optimizing concentrations
-continuously yields "0.6187 ultramarine", useless at a palette, and rounding
-afterwards lands somewhere never evaluated — so the reported accuracy would be
-fiction. Searching whole-number ratios means every candidate is a real recipe.
-
-**The photo reference card must be grey, not white.** White sits near the
-sensor's ceiling, so warm light clips its red channel and the correction fails
-silently. Measured under simulated tungsten: a white patch took a 5.3 dE error
-to 4.6; a mid-grey patch took it to 0.9.
-
-**Patterns record `pipeline_version` and their params.** Without this you cannot
-explain why a regenerated pattern looks different, or tell an improvement from
-a regression.
+**Dry shift is estimated.** The value change on drying in `mediums.py` is from
+the literature and from how these paints are generally described, not measured
+here. Same category as the catalogue.
 
 ---
 
 ## Licensing note
 
-Pigment mixing is an independent implementation of published Kubelka-Munk
-theory, with no licence encumbrance.
+[Mixbox](https://github.com/scrtwpns/mixbox) is the best-known pigment mixing
+library and is **CC BY-NC 4.0** — non-commercial. `pymixbox` inherits that
+licence. For a commercial product that is a problem which would surface exactly
+at launch, so the Kubelka–Munk implementation in `core/color/` is written from
+the published model instead, with a single-constant approximation corrected by
+a per-paint `tinting_strength`.
 
-If its quality ceiling becomes limiting, port
-[Spectral.js](https://github.com/rvanwijnen/spectral.js) (MIT). Do **not** reach
-for Mixbox, the better-known implementation: it is CC BY-NC 4.0, non-commercial
-only, and the `pymixbox` PyPI package inherits that restriction. A commercial
-licence can be negotiated with Secret Weapons, but that should be a deliberate
-decision rather than something discovered at launch.
+Check the licence of anything you add here against the same standard.
 
 ---
 
-## Roadmap
+## Performance notes
 
-- [x] Pattern generation: quantization, regions, labels, SVG
-- [x] Colour core: Lab, CIEDE2000, verdict bands, mix-direction hints
-- [x] Hardened image loading
-- [x] Forward pigment mixing (Kubelka-Munk) + starter catalog
-- [x] Inverse mixing: target colour → executable recipe
-- [x] Pattern → per-number mixing guide with honest accuracy flags
-- [x] Photo shade checking with lighting correction
-- [x] HTTP API
-- [ ] Measured paint data to replace the approximate catalog
-- [ ] Printable grey calibration card
-- [ ] Job queue, persistence, and auth
-- [ ] Grid overlay, then manual Loomis overlay
-- [ ] Tier A critique: fidelity metrics against a reference
-- [ ] Gallery as a progress timeline
+Rough figures from a development laptop — they will differ on yours, and the
+ratios matter more than the absolutes.
+
+- `srgb_to_reflectance` is the expensive call and is `lru_cache`d.
+- Inverse mixing caches its candidate table per palette. The first colour costs
+  a few seconds, every subsequent colour about 10ms. Almost all of that first
+  cost is spectral recovery, not the search.
+- CIEDE2000 over 41,000 pixels measured at 22ms — which is why the earlier
+  assumption that it was the bottleneck was wrong, and the real cost turned out
+  to be rebuilding the candidate table. Measure before optimising.
+
+---
+
+## Requirements
+
+Python 3.11+. Dependencies in `pyproject.toml`: numpy, scipy,
+opencv-python-headless, scikit-image, scikit-learn, colour-science, Pillow;
+FastAPI and uvicorn for the server; pytest and ruff for development.
