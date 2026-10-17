@@ -50,6 +50,7 @@ from ..core.imaging.loader import (
     encode_image,
     load_image,
 )
+from ..core.mediums import LEVELS, MEDIUMS, describe_mix, describe_value, guidance_for
 from ..core.paints import STARTER_ACRYLICS, catalog_by_id
 from ..core.pipeline import PIPELINE_VERSION, PatternParams, generate_pattern
 from ..core.recipes import recipes_for_pattern
@@ -106,8 +107,31 @@ class PatternOut(BaseModel):
     colors: int
     regions: int
     pipeline_version: str
+    medium: str
+    level: str
+    notes: list[str] = Field(
+        default_factory=list, description="Guidance specific to this medium and level"
+    )
     palette: list[PaletteColorOut]
     svg: str
+
+
+class OptionOut(BaseModel):
+    id: str
+    name: str
+
+
+class GuidanceOut(BaseModel):
+    medium: str
+    level: str
+    colors: int
+    max_components: int
+    min_region_area: int
+    excluded_paint_ids: list[str]
+    target_delta_e: float = Field(
+        description="Average Lab distance this level aims to come within"
+    )
+    notes: list[str]
 
 
 class MixOut(BaseModel):
@@ -235,6 +259,14 @@ def _decode(data: bytes, max_dimension: int):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+def _resolve_guidance(medium: str, level: str):
+    """Translate a medium and skill level into settings, or 400 on a typo."""
+    try:
+        return guidance_for(medium, level)
+    except KeyError as exc:
+        raise HTTPException(status_code=400, detail=str(exc).strip("'")) from exc
+
+
 def _resolve_palette(paint_ids: str | None):
     """Which paints the learner owns. Defaults to the full starter set."""
     if not paint_ids:
@@ -293,10 +325,17 @@ def _to_pixel_box(box, shape: tuple[int, int]) -> tuple[slice, slice] | None:
 _STATIC = Path(__file__).parent / "static"
 
 
+#: The page is edited constantly during development and is small enough that
+#: caching it buys nothing. Left cacheable, a browser reuses it without ever
+#: revalidating, and every change looks like it silently reverted — which costs
+#: far more time than the request it saves.
+_NO_CACHE = {"Cache-Control": "no-store, must-revalidate", "Pragma": "no-cache"}
+
+
 @app.get("/", include_in_schema=False)
 def index() -> FileResponse:
     """The web app itself."""
-    return FileResponse(_STATIC / "index.html")
+    return FileResponse(_STATIC / "index.html", headers=_NO_CACHE)
 
 
 @app.get("/calibration-card.svg", include_in_schema=False)
@@ -339,43 +378,78 @@ def list_paints() -> list[PaintOut]:
 @app.post("/patterns", response_model=PatternOut)
 def create_pattern(
     image: Annotated[UploadFile, File(description="JPEG, PNG, or WEBP")],
-    colors: Annotated[int, Query(ge=2, le=24)] = 12,
+    medium: Annotated[str, Query(description="acrylic, oil, watercolour, …")] = "acrylic",
+    level: Annotated[str, Query(description="beginner, improving, confident")] = "improving",
+    colors: Annotated[int | None, Query(ge=2, le=24)] = None,
     max_dimension: Annotated[int, Query(ge=200, le=2000)] = 900,
-    min_region_area: Annotated[int, Query(ge=10, le=5000)] = 90,
+    min_region_area: Annotated[int | None, Query(ge=10, le=5000)] = None,
     include_recipes: Annotated[bool, Query()] = True,
-    max_components: Annotated[int, Query(ge=1, le=3)] = 3,
+    max_components: Annotated[int | None, Query(ge=1, le=3)] = None,
     paints: Annotated[str | None, Query(description="Comma-separated paint ids")] = None,
     filled: Annotated[bool, Query(description="Color the SVG instead of outlines")] = False,
 ) -> PatternOut:
-    """Turn an uploaded photograph into a numbered, paintable pattern."""
+    """Turn an uploaded photograph into a numbered, paintable pattern.
+
+    `medium` and `level` are not decoration. They decide how many colours the
+    pattern has, how fine its shapes get, how many pigments a recipe may call
+    for, and whether white appears in a mix at all — a watercolourist lightens
+    with water and the paper, so a recipe asking for titanium white is an
+    instruction they cannot carry out. Anything passed explicitly overrides
+    them; leaving a parameter out means "use what suits this medium".
+    """
+    guide = _resolve_guidance(medium, level)
     data = _read_upload(image)
     loaded = _decode(data, max_dimension)
 
     pattern = generate_pattern(
         loaded.rgb,
         PatternParams(
-            n_colors=colors,
+            n_colors=colors if colors is not None else guide.colors,
             max_dimension=max_dimension,
-            min_region_area=min_region_area,
+            min_region_area=(
+                min_region_area if min_region_area is not None else guide.min_region_area
+            ),
+            monochrome=guide.medium.monochrome,
         ),
     )
 
     recipes = None
-    if include_recipes:
+    # A graphite pattern has nothing to mix. Running the palette solver anyway
+    # would spend five seconds producing pigment names that mean nothing with a
+    # pencil in your hand.
+    if include_recipes and not guide.medium.monochrome:
+        palette = [
+            paint
+            for paint in _resolve_palette(paints)
+            if paint.id not in guide.excluded_paint_ids
+        ]
+        if not palette:
+            raise HTTPException(
+                status_code=400,
+                detail=f"No paints left once {guide.medium.name.lower()} rules are applied.",
+            )
         recipes = recipes_for_pattern(
-            pattern, _resolve_palette(paints), max_components=max_components
+            pattern,
+            palette,
+            max_components=(
+                max_components if max_components is not None else guide.max_components
+            ),
         )
 
     palette: list[PaletteColorOut] = []
     for index, entry in enumerate(pattern.palette):
         item = PaletteColorOut(number=entry.number, hex=entry.rgb.hex, share=entry.share)
-        if recipes is not None:
+        if guide.medium.monochrome:
+            item.instructions = describe_value(entry.lab.L, guide.medium)
+        elif recipes is not None:
             recipe = recipes[index]
             item.mix = [
                 MixStep(paint=c.paint.name, paint_id=c.paint.id, parts=c.parts)
                 for c in recipe.recipe.components
             ]
-            item.instructions = recipe.recipe.describe()
+            item.instructions = describe_mix(
+                [(c.paint.name, c.parts) for c in recipe.recipe.components], guide.medium
+            )
             item.delta_e = round(recipe.recipe.delta_e, 2)
             item.achievable = recipe.is_achievable
         palette.append(item)
@@ -386,6 +460,9 @@ def create_pattern(
         colors=len(pattern.palette),
         regions=len(pattern.regions),
         pipeline_version=pattern.pipeline_version,
+        medium=guide.medium.id,
+        level=guide.level.id,
+        notes=list(guide.notes),
         palette=palette,
         svg=render_pattern_svg(pattern, filled=filled),
     )
@@ -420,6 +497,40 @@ def mix(
         hex=result.hex,
         lab=[round(result.lab.L, 2), round(result.lab.a, 2), round(result.lab.b, 2)],
         instructions=result.describe(),
+    )
+
+
+@app.get("/mediums", response_model=list[OptionOut])
+def list_mediums() -> list[OptionOut]:
+    return [OptionOut(id=m.id, name=m.name) for m in MEDIUMS]
+
+
+@app.get("/levels", response_model=list[OptionOut])
+def list_levels() -> list[OptionOut]:
+    return [OptionOut(id=level.id, name=level.name) for level in LEVELS]
+
+
+@app.get("/guidance", response_model=GuidanceOut)
+def guidance(
+    medium: Annotated[str, Query()] = "acrylic",
+    level: Annotated[str, Query()] = "improving",
+) -> GuidanceOut:
+    """What this combination means, before any image is uploaded.
+
+    Exposed separately so a client can show the learner what changes when they
+    switch medium — the colour count, the mixing limit, the missing white —
+    rather than discovering it only in the finished pattern.
+    """
+    g = _resolve_guidance(medium, level)
+    return GuidanceOut(
+        medium=g.medium.id,
+        level=g.level.id,
+        colors=g.colors,
+        max_components=g.max_components,
+        min_region_area=g.min_region_area,
+        excluded_paint_ids=list(g.excluded_paint_ids),
+        target_delta_e=g.target_delta_e,
+        notes=list(g.notes),
     )
 
 
