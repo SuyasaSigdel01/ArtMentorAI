@@ -1,13 +1,12 @@
 <!doctype html>
 <html lang="en">
-
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>ArtMentor — paint tutor</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><path d='M16 3C8.8 3 3 8.4 3 15c0 6.3 5.2 10.6 11.4 10.6 1.7 0 2.6-1 2.6-2.2 0-1.1-.8-1.6-.8-2.6 0-1.2 1-2.1 2.4-2.1h2.1c4 0 6.3-2.6 6.3-6.6C27 7.3 22.3 3 16 3z' fill='%23fffdf9' stroke='%23241f1a' stroke-width='1.7'/><circle cx='9.5' cy='13' r='2.1' fill='%232f3a86'/><circle cx='15' cy='9.2' r='2.1' fill='%23c2552b'/><circle cx='20.8' cy='12' r='2.1' fill='%23c69320'/><circle cx='11.6' cy='19.3' r='2.1' fill='%234a7a3a'/></svg>">
-    <style>
-        /* ═══════════════════════════════════════════════════════════════════════
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ArtMentor — paint tutor</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><path d='M16 3C8.8 3 3 8.4 3 15c0 6.3 5.2 10.6 11.4 10.6 1.7 0 2.6-1 2.6-2.2 0-1.1-.8-1.6-.8-2.6 0-1.2 1-2.1 2.4-2.1h2.1c4 0 6.3-2.6 6.3-6.6C27 7.3 22.3 3 16 3z' fill='%23fffdf9' stroke='%23241f1a' stroke-width='1.7'/><circle cx='9.5' cy='13' r='2.1' fill='%232f3a86'/><circle cx='15' cy='9.2' r='2.1' fill='%23c2552b'/><circle cx='20.8' cy='12' r='2.1' fill='%23c69320'/><circle cx='11.6' cy='19.3' r='2.1' fill='%234a7a3a'/></svg>">
+<style>
+/* ═══════════════════════════════════════════════════════════════════════
    ArtMentor — a Bauhaus colour-block theme.
 
    The idea: hard-edged geometry for the furniture, organic paint for the
@@ -19,1696 +18,503 @@
 
    Every animation sits behind prefers-reduced-motion at the bottom.
    ═══════════════════════════════════════════════════════════════════════ */
-        
-        :root {
-            --paper: #f6efe1;
-            --paper-2: #efe5d2;
-            --card: #fffcf5;
-            --ink: #16120e;
-            --ink-2: #574e44;
-            --faint: #ded0b8;
-            /* The palette. Saturated on purpose — this is an app about colour. */
-            --vermilion: #e2512a;
-            --cobalt: #2545c4;
-            --sun: #f2b304;
-            --sap: #2f8f45;
-            --rose: #d43b6a;
-            --teal: #0f9a9a;
-            --violet: #6b46d6;
-            --ultramarine: var(--cobalt);
-            --ochre: var(--sun);
-            --r: 0px;
-            /* boxes are boxes */
-            --rule: 2px solid var(--ink);
-            --pop: 6px 6px 0 var(--ink);
-            /* the hard sticker shadow */
-            --pop-sm: 4px 4px 0 var(--ink);
-            --ease: cubic-bezier(.22, 1.1, .36, 1);
-        }
-        
-        * {
-            box-sizing: border-box
-        }
-        
-        html {
-            scroll-behavior: smooth
-        }
-        
-        body {
-            margin: 0;
-            color: var(--ink);
-            background: var(--paper);
-            font: 16px/1.6 "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
-            -webkit-font-smoothing: antialiased;
-            overflow-x: hidden;
-        }
-        /* ── the colour blocks ──────────────────────────────────────────────────
+
+:root{
+  --paper:#f6efe1; --paper-2:#efe5d2; --card:#fffcf5;
+  --ink:#16120e; --ink-2:#574e44; --faint:#ded0b8;
+
+  /* The palette. Saturated on purpose — this is an app about colour. */
+  --vermilion:#e2512a;
+  --cobalt:#2545c4;
+  --sun:#f2b304;
+  --sap:#2f8f45;
+  --rose:#d43b6a;
+  --teal:#0f9a9a;
+  --violet:#6b46d6;
+
+  --ultramarine:var(--cobalt);
+  --ochre:var(--sun);
+
+  --r:0px;                       /* boxes are boxes */
+  --rule:2px solid var(--ink);
+  --pop:6px 6px 0 var(--ink);    /* the hard sticker shadow */
+  --pop-sm:4px 4px 0 var(--ink);
+  --ease:cubic-bezier(.22,1.1,.36,1);
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; color:var(--ink); background:var(--paper);
+  font:16px/1.6 "Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+  -webkit-font-smoothing:antialiased; overflow-x:hidden;
+}
+/* ── the colour blocks ──────────────────────────────────────────────────
    Blocks of colour with little prints inside them, a few carrying a horse,
    a cat, a bird. The gaps between blocks are the paper itself rather than
    black grout: at that weight black turned the page into a grid of windows
    and swallowed the artwork it exists to show.
 
    It sits still. A drifting wall is a screen effect; a wall is a surface. */
-        
-        body::before {
-            content: "";
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-            z-index: 0;
-            opacity: .3;
-            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='900' height='900' viewBox='0 0 900 900'><rect x='7.0' y='7.0' width='286.0' height='156.0' fill='%232bb3a3' rx='2'/><rect x='307.0' y='7.0' width='136.0' height='156.0' fill='%23f26b3a' rx='2'/><g transform='translate(342.0 52.0) scale(1.3750)'><g fill='%23f2c230'><circle cx='37.50' cy='24.00' r='7.6'/><circle cx='30.75' cy='35.69' r='7.6'/><circle cx='17.25' cy='35.69' r='7.6'/><circle cx='10.50' cy='24.00' r='7.6'/><circle cx='17.25' cy='12.31' r='7.6'/><circle cx='30.75' cy='12.31' r='7.6'/></g><circle cx='24' cy='24' r='8' fill='%233a2bd4'/></g><rect x='457.0' y='7.0' width='196.0' height='156.0' fill='%23f2c230' rx='2'/><rect x='667.0' y='7.0' width='96.0' height='156.0' fill='%23f79fc4' rx='2'/><rect x='777.0' y='7.0' width='116.0' height='156.0' fill='%233a2bd4' rx='2'/><rect x='7.0' y='177.0' width='116.0' height='91.0' fill='%23f2c230' rx='2'/><g transform='translate(231.9 199.4) scale(0.9625)'><g fill='%233a2bd4'><rect x='6' y='21' width='23' height='12' rx='1.5'/><rect x='24' y='11' width='9' height='13'/><path d='M24 8h16l2 7-18 2z'/><rect x='9' y='32' width='5' height='11' rx='1.5'/><rect x='21' y='32' width='5' height='11' rx='1.5'/><path d='M6 22a8 8 0 0 0-5 10l4 1a9 9 0 0 1 3-8z'/></g></g><rect x='387.0' y='177.0' width='106.0' height='91.0' fill='%233a2bd4' rx='2'/><rect x='507.0' y='177.0' width='276.0' height='91.0' fill='%23f26b3a' rx='2'/><rect x='797.0' y='177.0' width='96.0' height='91.0' fill='%232bb3a3' rx='2'/><rect x='7.0' y='282.0' width='156.0' height='201.0' fill='%23f79fc4' rx='2'/><rect x='177.0' y='282.0' width='106.0' height='201.0' fill='%23c8de6a' rx='2'/><rect x='297.0' y='282.0' width='266.0' height='201.0' fill='%233a2bd4' rx='2'/><g transform='translate(397.0 349.5) scale(1.3750)'><g fill='%23faf4e8'><circle cx='20' cy='28' r='12'/><circle cx='34' cy='15' r='7.5'/><path d='M40 11l8 4-8 4z'/><rect x='15' y='39' width='3.5' height='8' rx='1.7'/><rect x='24' y='39' width='3.5' height='8' rx='1.7'/></g><circle cx='36' cy='13' r='2.2' fill='%232bb3a3'/></g><rect x='777.0' y='282.0' width='116.0' height='201.0' fill='%23f26b3a' rx='2'/><rect x='7.0' y='497.0' width='226.0' height='106.0' fill='%23f26b3a' rx='2'/><rect x='247.0' y='497.0' width='136.0' height='106.0' fill='%232bb3a3' rx='2'/><g transform='translate(288.6 523.6) scale(1.1000)'><g fill='%23faf4e8'><path d='M11 13l1-11 10 7zM37 13l-1-11-10 7z'/><circle cx='24' cy='16' r='12'/><path d='M13 27h22l4 17H9z'/><path d='M39 32a11 11 0 0 1 8 12h-6a6 6 0 0 0-4-7z'/></g><circle cx='19' cy='15' r='2.1' fill='%232bb3a3'/><circle cx='29' cy='15' r='2.1' fill='%232bb3a3'/></g><rect x='527.0' y='497.0' width='246.0' height='106.0' fill='%23f2c230' rx='2'/><g transform='translate(623.6 523.6) scale(1.1000)'><g fill='%233a2bd4'><ellipse cx='27' cy='24' rx='16' ry='11'/><path d='M13 24L1 13v22z'/><path d='M27 13l1-9 6 10z'/></g><circle cx='35' cy='21' r='2.3' fill='%23f2c230'/></g><rect x='787.0' y='497.0' width='106.0' height='106.0' fill='%23f79fc4' rx='2'/><rect x='7.0' y='617.0' width='126.0' height='171.0' fill='%233a2bd4' rx='2'/><rect x='147.0' y='617.0' width='246.0' height='171.0' fill='%23f2c230' rx='2'/><rect x='407.0' y='617.0' width='176.0' height='171.0' fill='%23f79fc4' rx='2'/><g transform='translate(462.0 669.5) scale(1.3750)'><g fill='%233a2bd4'><ellipse cx='13' cy='16' rx='11.5' ry='8.5' transform='rotate(-22 13 16)'/><ellipse cx='35' cy='16' rx='11.5' ry='8.5' transform='rotate(22 35 16)'/><ellipse cx='16' cy='34' rx='8.5' ry='6.5' transform='rotate(24 16 34)'/><ellipse cx='32' cy='34' rx='8.5' ry='6.5' transform='rotate(-24 32 34)'/><rect x='22' y='7' width='4.5' height='34' rx='2.2'/><path d='M23 8l-5-5M26 8l5-5' stroke='%233a2bd4' stroke-width='2.4' stroke-linecap='round' fill='none'/></g></g><rect x='597.0' y='617.0' width='176.0' height='171.0' fill='%232bb3a3' rx='2'/><rect x='7.0' y='802.0' width='196.0' height='91.0' fill='%23c8de6a' rx='2'/><rect x='217.0' y='802.0' width='116.0' height='91.0' fill='%23f26b3a' rx='2'/><g transform='translate(251.9 824.4) scale(0.9625)'><g fill='%23f2c230'><rect x='22' y='1' width='4' height='7' transform='rotate(0 24 24)'/><rect x='22' y='1' width='4' height='7' transform='rotate(45 24 24)'/><rect x='22' y='1' width='4' height='7' transform='rotate(90 24 24)'/><rect x='22' y='1' width='4' height='7' transform='rotate(135 24 24)'/><rect x='22' y='1' width='4' height='7' transform='rotate(180 24 24)'/><rect x='22' y='1' width='4' height='7' transform='rotate(225 24 24)'/><rect x='22' y='1' width='4' height='7' transform='rotate(270 24 24)'/><rect x='22' y='1' width='4' height='7' transform='rotate(315 24 24)'/><circle cx='24' cy='24' r='12'/></g></g><rect x='587.0' y='802.0' width='136.0' height='91.0' fill='%232bb3a3' rx='2'/><rect x='737.0' y='802.0' width='156.0' height='91.0' fill='%23f2c230' rx='2'/><g transform='translate(791.9 824.4) scale(0.9625)'><g fill='%232bb3a3'><rect x='21' y='30' width='6' height='15'/><path d='M24 3l10 14H14zM24 14l13 17H11z'/></g></g></svg>");
-            background-size: 900px 900px;
-        }
-        /* A breath of warmth over the blocks so the repeat never reads as wallpaper. */
-        
-        body::after {
-            content: "";
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-            z-index: 0;
-            opacity: .26;
-            background: radial-gradient(50vw 50vw at 6% 2%, rgba(37, 69, 196, .3), transparent 72%), radial-gradient(46vw 46vw at 98% 16%, rgba(226, 81, 42, .3), transparent 72%), radial-gradient(52vw 52vw at 86% 96%, rgba(242, 179, 4, .3), transparent 72%);
-            animation: breathe 30s ease-in-out infinite alternate;
-        }
-        
-        @keyframes breathe {
-            to {
-                transform: scale(1.12) translate(1.4%, -1.4%)
-            }
-        }
-        
-        .sans {
-            font-family: ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif
-        }
-        /* ───────────────────────────── header ───────────────────────────── */
-        
-        header {
-            position: sticky;
-            top: 0;
-            z-index: 30;
-            background: var(--paper);
-            border-bottom: 3px solid var(--ink)
-        }
-        
-        header::after {
-            content: "";
-            position: absolute;
-            left: 0;
-            right: 0;
-            bottom: -9px;
-            height: 6px;
-            background: linear-gradient(90deg, var(--vermilion) 0 14%, var(--sun) 14% 28%, var(--sap) 28% 42%, var(--cobalt) 42% 56%, var(--rose) 56% 70%, var(--teal) 70% 84%, var(--violet) 84% 100%);
-            background-size: 200% 100%;
-            animation: slide 14s linear infinite;
-        }
-        
-        @keyframes slide {
-            to {
-                background-position: 200% 0
-            }
-        }
-        
-        .bar {
-            max-width: 1180px;
-            margin: 0 auto;
-            padding: 12px 22px;
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            flex-wrap: wrap
-        }
-        
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: 11px;
-            text-decoration: none;
-            color: inherit
-        }
-        
-        .logo svg {
-            display: block;
-            transition: transform .5s var(--ease)
-        }
-        
-        .logo:hover svg {
-            transform: rotate(-14deg) scale(1.06)
-        }
-        
-        .word {
-            font: 700 21px/1 ui-sans-serif, system-ui, sans-serif;
-            letter-spacing: -.03em
-        }
-        
-        .word i {
-            font-style: normal;
-            color: var(--vermilion)
-        }
-        
-        nav {
-            margin-left: auto;
-            display: flex;
-            gap: 4px;
-            flex-wrap: wrap
-        }
-        
-        nav button {
-            position: relative;
-            font: 600 13px/1 ui-sans-serif, system-ui, sans-serif;
-            letter-spacing: .01em;
-            border: 2px solid transparent;
-            background: none;
-            color: var(--ink-2);
-            padding: 9px 13px;
-            cursor: pointer;
-            transition: color .18s, transform .18s var(--ease)
-        }
-        /* The block slides in behind the label instead of a line underneath it. */
-        
-        nav button::before {
-            content: "";
-            position: absolute;
-            inset: 0;
-            z-index: -1;
-            background: var(--c, var(--vermilion));
-            transform: scaleY(0);
-            transform-origin: bottom;
-            transition: transform .26s var(--ease)
-        }
-        
-        nav button:hover {
-            color: var(--ink);
-            transform: translateY(-2px)
-        }
-        
-        nav button:hover::before {
-            transform: scaleY(.14)
-        }
-        
-        nav button[aria-selected="true"] {
-            color: #fffcf5;
-            border-color: var(--ink)
-        }
-        
-        nav button[aria-selected="true"]::before {
-            transform: scaleY(1)
-        }
-        
-        nav button:nth-child(1) {
-            --c: var(--vermilion)
-        }
-        
-        nav button:nth-child(2) {
-            --c: var(--cobalt)
-        }
-        
-        nav button:nth-child(3) {
-            --c: var(--teal)
-        }
-        
-        nav button:nth-child(4) {
-            --c: var(--violet)
-        }
-        
-        nav button:nth-child(5) {
-            --c: var(--sap)
-        }
-        
-        main {
-            max-width: 1180px;
-            margin: 0 auto;
-            padding: 40px 22px 110px;
-            position: relative;
-            z-index: 1
-        }
-        
-        .panel[hidden] {
-            display: none
-        }
-        
-        .panel {
-            animation: panelIn .42s var(--ease) both
-        }
-        
-        @keyframes panelIn {
-            from {
-                opacity: 0;
-                transform: translateY(14px)
-            }
-        }
-        /* ───────────────────────────── type ───────────────────────────── */
-        
-        h1 {
-            font: 700 clamp(32px, 5vw, 54px)/1.04 ui-sans-serif, system-ui, sans-serif;
-            letter-spacing: -.035em;
-            margin: 0;
-            padding: 22px 28px 10px;
-            background: var(--paper);
-            border-radius: 3px
-        }
-        /* A highlighter block that wipes in behind the emphasised words. */
-        /* `isolation` matters here: once h1 gained a background of its own, a
+body::before{
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:0; opacity:.3;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='900' height='900' viewBox='0 0 900 900'><rect x='7.0' y='7.0' width='286.0' height='156.0' fill='%232bb3a3' rx='2'/><rect x='307.0' y='7.0' width='136.0' height='156.0' fill='%23f26b3a' rx='2'/><g transform='translate(342.0 52.0) scale(1.3750)'><g fill='%23f2c230'><circle cx='37.50' cy='24.00' r='7.6'/><circle cx='30.75' cy='35.69' r='7.6'/><circle cx='17.25' cy='35.69' r='7.6'/><circle cx='10.50' cy='24.00' r='7.6'/><circle cx='17.25' cy='12.31' r='7.6'/><circle cx='30.75' cy='12.31' r='7.6'/></g><circle cx='24' cy='24' r='8' fill='%233a2bd4'/></g><rect x='457.0' y='7.0' width='196.0' height='156.0' fill='%23f2c230' rx='2'/><rect x='667.0' y='7.0' width='96.0' height='156.0' fill='%23f79fc4' rx='2'/><rect x='777.0' y='7.0' width='116.0' height='156.0' fill='%233a2bd4' rx='2'/><rect x='7.0' y='177.0' width='116.0' height='91.0' fill='%23f2c230' rx='2'/><g transform='translate(231.9 199.4) scale(0.9625)'><g fill='%233a2bd4'><rect x='6' y='21' width='23' height='12' rx='1.5'/><rect x='24' y='11' width='9' height='13'/><path d='M24 8h16l2 7-18 2z'/><rect x='9' y='32' width='5' height='11' rx='1.5'/><rect x='21' y='32' width='5' height='11' rx='1.5'/><path d='M6 22a8 8 0 0 0-5 10l4 1a9 9 0 0 1 3-8z'/></g></g><rect x='387.0' y='177.0' width='106.0' height='91.0' fill='%233a2bd4' rx='2'/><rect x='507.0' y='177.0' width='276.0' height='91.0' fill='%23f26b3a' rx='2'/><rect x='797.0' y='177.0' width='96.0' height='91.0' fill='%232bb3a3' rx='2'/><rect x='7.0' y='282.0' width='156.0' height='201.0' fill='%23f79fc4' rx='2'/><rect x='177.0' y='282.0' width='106.0' height='201.0' fill='%23c8de6a' rx='2'/><rect x='297.0' y='282.0' width='266.0' height='201.0' fill='%233a2bd4' rx='2'/><g transform='translate(397.0 349.5) scale(1.3750)'><g fill='%23faf4e8'><circle cx='20' cy='28' r='12'/><circle cx='34' cy='15' r='7.5'/><path d='M40 11l8 4-8 4z'/><rect x='15' y='39' width='3.5' height='8' rx='1.7'/><rect x='24' y='39' width='3.5' height='8' rx='1.7'/></g><circle cx='36' cy='13' r='2.2' fill='%232bb3a3'/></g><rect x='777.0' y='282.0' width='116.0' height='201.0' fill='%23f26b3a' rx='2'/><rect x='7.0' y='497.0' width='226.0' height='106.0' fill='%23f26b3a' rx='2'/><rect x='247.0' y='497.0' width='136.0' height='106.0' fill='%232bb3a3' rx='2'/><g transform='translate(288.6 523.6) scale(1.1000)'><g fill='%23faf4e8'><path d='M11 13l1-11 10 7zM37 13l-1-11-10 7z'/><circle cx='24' cy='16' r='12'/><path d='M13 27h22l4 17H9z'/><path d='M39 32a11 11 0 0 1 8 12h-6a6 6 0 0 0-4-7z'/></g><circle cx='19' cy='15' r='2.1' fill='%232bb3a3'/><circle cx='29' cy='15' r='2.1' fill='%232bb3a3'/></g><rect x='527.0' y='497.0' width='246.0' height='106.0' fill='%23f2c230' rx='2'/><g transform='translate(623.6 523.6) scale(1.1000)'><g fill='%233a2bd4'><ellipse cx='27' cy='24' rx='16' ry='11'/><path d='M13 24L1 13v22z'/><path d='M27 13l1-9 6 10z'/></g><circle cx='35' cy='21' r='2.3' fill='%23f2c230'/></g><rect x='787.0' y='497.0' width='106.0' height='106.0' fill='%23f79fc4' rx='2'/><rect x='7.0' y='617.0' width='126.0' height='171.0' fill='%233a2bd4' rx='2'/><rect x='147.0' y='617.0' width='246.0' height='171.0' fill='%23f2c230' rx='2'/><rect x='407.0' y='617.0' width='176.0' height='171.0' fill='%23f79fc4' rx='2'/><g transform='translate(462.0 669.5) scale(1.3750)'><g fill='%233a2bd4'><ellipse cx='13' cy='16' rx='11.5' ry='8.5' transform='rotate(-22 13 16)'/><ellipse cx='35' cy='16' rx='11.5' ry='8.5' transform='rotate(22 35 16)'/><ellipse cx='16' cy='34' rx='8.5' ry='6.5' transform='rotate(24 16 34)'/><ellipse cx='32' cy='34' rx='8.5' ry='6.5' transform='rotate(-24 32 34)'/><rect x='22' y='7' width='4.5' height='34' rx='2.2'/><path d='M23 8l-5-5M26 8l5-5' stroke='%233a2bd4' stroke-width='2.4' stroke-linecap='round' fill='none'/></g></g><rect x='597.0' y='617.0' width='176.0' height='171.0' fill='%232bb3a3' rx='2'/><rect x='7.0' y='802.0' width='196.0' height='91.0' fill='%23c8de6a' rx='2'/><rect x='217.0' y='802.0' width='116.0' height='91.0' fill='%23f26b3a' rx='2'/><g transform='translate(251.9 824.4) scale(0.9625)'><g fill='%23f2c230'><rect x='22' y='1' width='4' height='7' transform='rotate(0 24 24)'/><rect x='22' y='1' width='4' height='7' transform='rotate(45 24 24)'/><rect x='22' y='1' width='4' height='7' transform='rotate(90 24 24)'/><rect x='22' y='1' width='4' height='7' transform='rotate(135 24 24)'/><rect x='22' y='1' width='4' height='7' transform='rotate(180 24 24)'/><rect x='22' y='1' width='4' height='7' transform='rotate(225 24 24)'/><rect x='22' y='1' width='4' height='7' transform='rotate(270 24 24)'/><rect x='22' y='1' width='4' height='7' transform='rotate(315 24 24)'/><circle cx='24' cy='24' r='12'/></g></g><rect x='587.0' y='802.0' width='136.0' height='91.0' fill='%232bb3a3' rx='2'/><rect x='737.0' y='802.0' width='156.0' height='91.0' fill='%23f2c230' rx='2'/><g transform='translate(791.9 824.4) scale(0.9625)'><g fill='%232bb3a3'><rect x='21' y='30' width='6' height='15'/><path d='M24 3l10 14H14zM24 14l13 17H11z'/></g></g></svg>");
+  background-size:900px 900px;
+}
+/* A breath of warmth over the blocks so the repeat never reads as wallpaper. */
+body::after{
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:0; opacity:.26;
+  background:
+    radial-gradient(50vw 50vw at 6% 2%, rgba(37,69,196,.3), transparent 72%),
+    radial-gradient(46vw 46vw at 98% 16%, rgba(226,81,42,.3), transparent 72%),
+    radial-gradient(52vw 52vw at 86% 96%, rgba(242,179,4,.3), transparent 72%);
+  animation:breathe 30s ease-in-out infinite alternate;
+}
+@keyframes breathe{to{transform:scale(1.12) translate(1.4%,-1.4%)}}
+
+.sans{font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+
+/* ───────────────────────────── header ───────────────────────────── */
+header{position:sticky; top:0; z-index:30; background:var(--paper);
+  border-bottom:3px solid var(--ink)}
+header::after{
+  content:""; position:absolute; left:0; right:0; bottom:-9px; height:6px;
+  background:linear-gradient(90deg,
+    var(--vermilion) 0 14%, var(--sun) 14% 28%, var(--sap) 28% 42%,
+    var(--cobalt) 42% 56%, var(--rose) 56% 70%, var(--teal) 70% 84%,
+    var(--violet) 84% 100%);
+  background-size:200% 100%; animation:slide 14s linear infinite;
+}
+@keyframes slide{to{background-position:200% 0}}
+.bar{max-width:1180px; margin:0 auto; padding:12px 22px; display:flex;
+  align-items:center; gap:14px; flex-wrap:wrap}
+.logo{display:flex; align-items:center; gap:11px; text-decoration:none; color:inherit}
+.logo svg{display:block; transition:transform .5s var(--ease)}
+.logo:hover svg{transform:rotate(-14deg) scale(1.06)}
+.word{font:700 21px/1 ui-sans-serif,system-ui,sans-serif; letter-spacing:-.03em}
+.word i{font-style:normal; color:var(--vermilion)}
+
+nav{margin-left:auto; display:flex; gap:4px; flex-wrap:wrap}
+nav button{position:relative; font:600 13px/1 ui-sans-serif,system-ui,sans-serif;
+  letter-spacing:.01em; border:2px solid transparent; background:none; color:var(--ink-2);
+  padding:9px 13px; cursor:pointer; transition:color .18s, transform .18s var(--ease)}
+/* The block slides in behind the label instead of a line underneath it. */
+nav button::before{content:""; position:absolute; inset:0; z-index:-1;
+  background:var(--c,var(--vermilion)); transform:scaleY(0); transform-origin:bottom;
+  transition:transform .26s var(--ease)}
+nav button:hover{color:var(--ink); transform:translateY(-2px)}
+nav button:hover::before{transform:scaleY(.14)}
+nav button[aria-selected="true"]{color:#fffcf5; border-color:var(--ink)}
+nav button[aria-selected="true"]::before{transform:scaleY(1)}
+
+nav button:nth-child(1){--c:var(--vermilion)}
+nav button:nth-child(2){--c:var(--cobalt)}
+nav button:nth-child(3){--c:var(--teal)}
+nav button:nth-child(4){--c:var(--violet)}
+nav button:nth-child(5){--c:var(--sap)}
+
+main{max-width:1180px; margin:0 auto; padding:40px 22px 110px; position:relative; z-index:1}
+.panel[hidden]{display:none}
+.panel{animation:panelIn .42s var(--ease) both}
+@keyframes panelIn{from{opacity:0; transform:translateY(14px)}}
+
+/* ───────────────────────────── type ───────────────────────────── */
+h1{font:700 clamp(32px,5vw,54px)/1.04 ui-sans-serif,system-ui,sans-serif;
+  letter-spacing:-.035em; margin:0; padding:22px 28px 10px;
+  background:var(--paper); border-radius:3px}
+/* A highlighter block that wipes in behind the emphasised words. */
+/* `isolation` matters here: once h1 gained a background of its own, a
    z-index:-1 highlight went behind it and vanished. Isolating the em keeps
    the block above the headline's paper and below its letters. */
-        
-        h1 em {
-            font-style: normal;
-            position: relative;
-            isolation: isolate;
-            white-space: nowrap;
-            padding: 0 .1em;
-            margin: 0 -.03em
-        }
-        
-        h1 em::before {
-            content: "";
-            position: absolute;
-            left: 0;
-            right: 0;
-            bottom: .04em;
-            top: .14em;
-            background: var(--sun);
-            z-index: -1;
-            transform: scaleX(0);
-            transform-origin: left;
-            animation: wipe .7s .25s var(--ease) forwards
-        }
-        
-        @keyframes wipe {
-            to {
-                transform: scaleX(1)
-            }
-        }
-        /* ── two letters drawn instead of set ───────────────────────────────────
-   The "a" of the hero is the palette from the logo and the "g" is a brush.
-   Both are inline SVG sized in `em`, so they scale with the headline and
-   stay put at every breakpoint.
+h1 em{font-style:normal; position:relative; isolation:isolate; white-space:nowrap;
+  padding:0 .1em; margin:0 -.03em}
+h1 em::before{content:""; position:absolute; left:0; right:0; bottom:.04em; top:.14em;
+  background:var(--sun); z-index:-1; transform:scaleX(0); transform-origin:left;
+  animation:wipe .7s .25s var(--ease) forwards}
+@keyframes wipe{to{transform:scaleX(1)}}
+.lede{color:var(--ink-2); margin:0 0 32px; font-size:17px; background:var(--paper);
+  padding:0 34% 22px 28px; border-radius:3px}
+@media (max-width:760px){.lede{padding-right:28px}}
 
-   The real letter is still in the DOM, visually hidden: the heading reads
-   correctly to a screen reader, copies as text, and is findable with
-   ctrl-F. A picture of a letter is decoration, not a letter.
-
-   The brush is tilted. Stood upright in a line of type it read as a dart —
-   the angle is what makes the silhouette legible at a glance. */
-        
-        .glyph {
-            display: inline-block;
-            color: inherit
-        }
-        
-        .glyph svg {
-            display: block;
-            width: 100%;
-            height: 100%
-        }
-        
-        .glyph-a {
-            width: .80em;
-            height: .76em;
-            vertical-align: -.03em;
-            margin: 0 .05em
-        }
-        
-        .glyph-g {
-            width: .66em;
-            height: .88em;
-            vertical-align: -.26em;
-            margin: 0 .05em 0 0
-        }
-        
-        .sr {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            overflow: hidden;
-            clip-path: inset(50%);
-            white-space: nowrap
-        }
-        
-        .lede {
-            color: var(--ink-2);
-            margin: 0 0 32px;
-            font-size: 17px;
-            background: var(--paper);
-            padding: 0 34% 22px 28px;
-            border-radius: 3px
-        }
-        
-        @media (max-width:760px) {
-            .lede {
-                padding-right: 28px
-            }
-        }
-        
-        h2.sec {
-            font: 700 11.5px/1 ui-sans-serif, system-ui, sans-serif;
-            letter-spacing: .17em;
-            text-transform: uppercase;
-            color: var(--ink);
-            margin: 0 0 18px;
-            display: flex;
-            align-items: center;
-            gap: 10px
-        }
-        
-        h2.sec::after {
-            content: "";
-            flex: 1;
-            height: 2px;
-            background: var(--ink);
-            opacity: .18
-        }
-        /* The reference marks its section labels with a small coloured dot. Only the
+h2.sec{font:700 11.5px/1 ui-sans-serif,system-ui,sans-serif; letter-spacing:.17em;
+  text-transform:uppercase; color:var(--ink); margin:0 0 18px;
+  display:flex; align-items:center; gap:10px}
+h2.sec::after{content:""; flex:1; height:2px; background:var(--ink); opacity:.18}
+/* The reference marks its section labels with a small coloured dot. Only the
    ones without a numbered step need it; the step square already does that job. */
-        
-        h2.sec:not(:has(.step))::before {
-            content: "";
-            width: 10px;
-            height: 10px;
-            flex: none;
-            border-radius: 50%;
-            background: var(--cobalt)
-        }
-        
-        .step {
-            display: inline-grid;
-            place-items: center;
-            width: 24px;
-            height: 24px;
-            flex: none;
-            background: var(--ink);
-            color: #fffcf5;
-            font: 700 12px/1 ui-sans-serif, sans-serif
-        }
-        /* ───────────────────────────── surfaces ───────────────────────────── */
-        
-        .sheet {
-            background: var(--card);
-            border: var(--rule);
-            box-shadow: var(--pop);
-            padding: 24px;
-            position: relative;
-            animation: blockIn .5s var(--ease) both
-        }
-        /* A quiet colour tab on the corner of every card, cycling through the
+h2.sec:not(:has(.step))::before{content:""; width:10px; height:10px; flex:none;
+  border-radius:50%; background:var(--cobalt)}
+.step{display:inline-grid; place-items:center; width:24px; height:24px; flex:none;
+  background:var(--ink); color:#fffcf5; font:700 12px/1 ui-sans-serif,sans-serif}
+
+/* ───────────────────────────── surfaces ───────────────────────────── */
+.sheet{background:var(--card); border:var(--rule); box-shadow:var(--pop);
+  padding:24px; position:relative;
+  animation:blockIn .5s var(--ease) both}
+/* A quiet colour tab on the corner of every card, cycling through the
    palette so no two adjacent cards wear the same colour. */
-        
-        .sheet::before {
-            content: "";
-            position: absolute;
-            top: -2px;
-            right: -2px;
-            width: 34px;
-            height: 10px;
-            background: var(--vermilion);
-            border: var(--rule);
-            border-bottom: 0
-        }
-        
-        .split>div:nth-child(2) .sheet::before {
-            background: var(--cobalt)
-        }
-        
-        .sheet~.sheet::before {
-            background: var(--teal)
-        }
-        
-        .sheet~.sheet~.sheet::before {
-            background: var(--sun)
-        }
-        
-        @keyframes blockIn {
-            from {
-                opacity: 0;
-                transform: translate(-8px, 10px)
-            }
-        }
-        
-        .split {
-            display: grid;
-            grid-template-columns: minmax(0, 360px) minmax(0, 1fr);
-            gap: 28px;
-            align-items: start
-        }
-        
-        @media (max-width:880px) {
-            .split {
-                grid-template-columns: 1fr
-            }
-        }
-        /* ───────────────────────────── palette dabs ─────────────────────────────
+.sheet::before{content:""; position:absolute; top:-2px; right:-2px; width:34px; height:10px;
+  background:var(--vermilion); border:var(--rule); border-bottom:0}
+.split > div:nth-child(2) .sheet::before{background:var(--cobalt)}
+.sheet ~ .sheet::before{background:var(--teal)}
+.sheet ~ .sheet ~ .sheet::before{background:var(--sun)}
+@keyframes blockIn{from{opacity:0; transform:translate(-8px,10px)}}
+
+.split{display:grid; grid-template-columns:minmax(0,360px) minmax(0,1fr); gap:28px;
+  align-items:start}
+@media (max-width:880px){.split{grid-template-columns:1fr}}
+
+/* ───────────────────────────── palette dabs ─────────────────────────────
    Deliberately the one organic thing in a page of boxes: this is paint. */
-        
-        .dabs {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 18px 11px;
-            margin-top: 4px
-        }
-        
-        .dab {
-            position: relative;
-            width: 72px;
-            text-align: center;
-            cursor: pointer;
-            border: 0;
-            background: none;
-            padding: 0;
-            font: inherit;
-            transition: transform .2s cubic-bezier(.3, 1.5, .5, 1)
-        }
-        
-        .dab:hover {
-            transform: translateY(-5px) rotate(-4deg) scale(1.06)
-        }
-        
-        .dab .blob {
-            display: block;
-            /* a span is inline: without this, width/height do nothing */
-            width: 46px;
-            height: 42px;
-            margin: 0 auto;
-            position: relative;
-            border-radius: 52% 48% 43% 57% / 56% 62% 38% 44%;
-            box-shadow: inset -3px -5px 9px rgba(0, 0, 0, .3), inset 3px 4px 7px rgba(255, 255, 255, .4), 0 4px 0 -1px rgba(22, 18, 14, .55);
-            transition: filter .2s, opacity .2s, box-shadow .2s;
-        }
-        
-        .dab .blob::after {
-            content: "";
-            position: absolute;
-            left: 22%;
-            top: 16%;
-            width: 30%;
-            height: 22%;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, .55);
-            filter: blur(1.4px)
-        }
-        
-        .dab .nm {
-            display: block;
-            margin-top: 6px;
-            font: 600 10.5px/1.25 ui-sans-serif, sans-serif;
-            color: var(--ink-2)
-        }
-        
-        .dab[aria-pressed="false"] .blob {
-            filter: grayscale(.9);
-            opacity: .26;
-            box-shadow: none
-        }
-        
-        .dab[aria-pressed="false"] .nm {
-            opacity: .4;
-            text-decoration: line-through
-        }
-        
-        .dab .tick {
-            position: absolute;
-            top: -5px;
-            right: -2px;
-            width: 17px;
-            height: 17px;
-            background: var(--ink);
-            color: #fffcf5;
-            font: 700 10px/17px ui-sans-serif, sans-serif;
-            opacity: 0;
-            transform: scale(.4);
-            transition: .2s var(--ease)
-        }
-        
-        .dab[aria-pressed="true"] .tick {
-            opacity: 1;
-            transform: none
-        }
-        /* ───────────────────────────── controls ───────────────────────────── */
-        
-        .drop {
-            border: 3px dashed var(--faint);
-            padding: 30px 16px;
-            text-align: center;
-            cursor: pointer;
-            background: #fffdf8;
-            position: relative;
-            transition: .18s var(--ease)
-        }
-        
-        .drop:hover,
-        .drop.over {
-            border-color: var(--vermilion);
-            background: #fff4ef;
-            transform: translate(-2px, -2px);
-            box-shadow: var(--pop-sm)
-        }
-        
-        .drop.has {
-            border-style: solid;
-            border-color: var(--sap);
-            background: #f1f8f1
-        }
-        /* Corner ticks, so even the empty state reads as part of the grid. */
-        
-        .drop::after {
-            content: "";
-            position: absolute;
-            inset: 6px;
-            pointer-events: none;
-            background: linear-gradient(var(--ink), var(--ink)) 0 0/9px 2px no-repeat, linear-gradient(var(--ink), var(--ink)) 0 0/2px 9px no-repeat, linear-gradient(var(--ink), var(--ink)) 100% 100%/9px 2px no-repeat, linear-gradient(var(--ink), var(--ink)) 100% 100%/2px 9px no-repeat;
-            opacity: .25
-        }
-        
-        .drop .ic {
-            line-height: 0;
-            margin-bottom: 10px;
-            opacity: .5;
-            color: var(--ink)
-        }
-        
-        .drop.has .ic {
-            opacity: 1
-        }
-        
-        .drop b {
-            display: block;
-            font: 700 15px/1.3 ui-sans-serif, sans-serif
-        }
-        
-        .drop small {
-            color: var(--ink-2);
-            font-family: ui-sans-serif, sans-serif;
-            font-size: 12.5px
-        }
-        
-        input[type=file] {
-            display: none
-        }
-        
-        .knob {
-            margin-top: 22px
-        }
-        
-        .knob .lab {
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            font: 700 11.5px/1 ui-sans-serif, sans-serif;
-            letter-spacing: .11em;
-            text-transform: uppercase;
-            color: var(--ink-2)
-        }
-        
-        .knob .val {
-            font: 700 18px/1 ui-sans-serif, sans-serif;
-            text-transform: none;
-            letter-spacing: -.02em;
-            color: var(--ink);
-            font-variant-numeric: tabular-nums
-        }
-        
-        input[type=range] {
-            width: 100%;
-            margin-top: 10px;
-            accent-color: var(--vermilion);
-            cursor: pointer
-        }
-        
-        .brush {
-            display: block;
-            width: 100%;
-            margin-top: 24px;
-            cursor: pointer;
-            border: var(--rule);
-            padding: 14px 18px;
-            font: 700 15px/1 ui-sans-serif, sans-serif;
-            color: #fffcf5;
-            background: var(--ink);
-            box-shadow: 5px 5px 0 var(--vermilion);
-            transition: .16s var(--ease)
-        }
-        /* Masked rather than drawn, so the flower is whatever colour the label is.
+.dabs{display:flex; flex-wrap:wrap; gap:18px 11px; margin-top:4px}
+.dab{position:relative; width:72px; text-align:center; cursor:pointer; border:0;
+  background:none; padding:0; font:inherit;
+  transition:transform .2s cubic-bezier(.3,1.5,.5,1)}
+.dab:hover{transform:translateY(-5px) rotate(-4deg) scale(1.06)}
+.dab .blob{
+  display:block;  /* a span is inline: without this, width/height do nothing */
+  width:46px; height:42px; margin:0 auto; position:relative;
+  border-radius:52% 48% 43% 57% / 56% 62% 38% 44%;
+  box-shadow:inset -3px -5px 9px rgba(0,0,0,.3), inset 3px 4px 7px rgba(255,255,255,.4),
+             0 4px 0 -1px rgba(22,18,14,.55);
+  transition:filter .2s, opacity .2s, box-shadow .2s;
+}
+.dab .blob::after{content:""; position:absolute; left:22%; top:16%; width:30%; height:22%;
+  border-radius:50%; background:rgba(255,255,255,.55); filter:blur(1.4px)}
+.dab .nm{display:block; margin-top:6px; font:600 10.5px/1.25 ui-sans-serif,sans-serif;
+  color:var(--ink-2)}
+.dab[aria-pressed="false"] .blob{filter:grayscale(.9); opacity:.26; box-shadow:none}
+.dab[aria-pressed="false"] .nm{opacity:.4; text-decoration:line-through}
+.dab .tick{position:absolute; top:-5px; right:-2px; width:17px; height:17px;
+  background:var(--ink); color:#fffcf5; font:700 10px/17px ui-sans-serif,sans-serif;
+  opacity:0; transform:scale(.4); transition:.2s var(--ease)}
+.dab[aria-pressed="true"] .tick{opacity:1; transform:none}
+
+/* ───────────────────────────── controls ───────────────────────────── */
+.drop{border:3px dashed var(--faint); padding:30px 16px; text-align:center;
+  cursor:pointer; background:#fffdf8; position:relative; transition:.18s var(--ease)}
+.drop:hover,.drop.over{border-color:var(--vermilion); background:#fff4ef;
+  transform:translate(-2px,-2px); box-shadow:var(--pop-sm)}
+.drop.has{border-style:solid; border-color:var(--sap); background:#f1f8f1}
+/* Corner ticks, so even the empty state reads as part of the grid. */
+.drop::after{content:""; position:absolute; inset:6px; pointer-events:none;
+  background:
+    linear-gradient(var(--ink),var(--ink)) 0 0/9px 2px no-repeat,
+    linear-gradient(var(--ink),var(--ink)) 0 0/2px 9px no-repeat,
+    linear-gradient(var(--ink),var(--ink)) 100% 100%/9px 2px no-repeat,
+    linear-gradient(var(--ink),var(--ink)) 100% 100%/2px 9px no-repeat;
+  opacity:.25}
+.drop .ic{line-height:0; margin-bottom:10px; opacity:.5; color:var(--ink)}
+.drop.has .ic{opacity:1}
+.drop b{display:block; font:700 15px/1.3 ui-sans-serif,sans-serif}
+.drop small{color:var(--ink-2); font-family:ui-sans-serif,sans-serif; font-size:12.5px}
+input[type=file]{display:none}
+
+.knob{margin-top:22px}
+.knob .lab{display:flex; justify-content:space-between; align-items:baseline;
+  font:700 11.5px/1 ui-sans-serif,sans-serif; letter-spacing:.11em;
+  text-transform:uppercase; color:var(--ink-2)}
+.knob .val{font:700 18px/1 ui-sans-serif,sans-serif; text-transform:none;
+  letter-spacing:-.02em; color:var(--ink); font-variant-numeric:tabular-nums}
+input[type=range]{width:100%; margin-top:10px; accent-color:var(--vermilion); cursor:pointer}
+
+.brush{display:block; width:100%; margin-top:24px; cursor:pointer;
+  border:var(--rule); padding:14px 18px;
+  font:700 15px/1 ui-sans-serif,sans-serif; color:#fffcf5; background:var(--ink);
+  box-shadow:5px 5px 0 var(--vermilion); transition:.16s var(--ease)}
+/* Masked rather than drawn, so the flower is whatever colour the label is.
    Hidden while disabled, which is also when the loading squares appear — two
    marks on one button is one too many. */
-        
-        .brush::before {
-            content: "";
-            display: inline-block;
-            width: 17px;
-            height: 17px;
-            vertical-align: -3px;
-            margin-right: 10px;
-            background: currentColor;
-            -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'><g fill='black'><circle cx='37.50' cy='24.00' r='7.6'/><circle cx='30.75' cy='35.69' r='7.6'/><circle cx='17.25' cy='35.69' r='7.6'/><circle cx='10.50' cy='24.00' r='7.6'/><circle cx='17.25' cy='12.31' r='7.6'/><circle cx='30.75' cy='12.31' r='7.6'/></g><circle cx='24' cy='24' r='8' fill='black'/></svg>") no-repeat center/100%;
-            mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'><g fill='black'><circle cx='37.50' cy='24.00' r='7.6'/><circle cx='30.75' cy='35.69' r='7.6'/><circle cx='17.25' cy='35.69' r='7.6'/><circle cx='10.50' cy='24.00' r='7.6'/><circle cx='17.25' cy='12.31' r='7.6'/><circle cx='30.75' cy='12.31' r='7.6'/></g><circle cx='24' cy='24' r='8' fill='black'/></svg>") no-repeat center/100%;
-            transition: transform .4s var(--ease)
-        }
-        
-        .brush:hover:not(:disabled)::before {
-            transform: rotate(90deg)
-        }
-        
-        .brush:disabled::before {
-            display: none
-        }
-        
-        .brush:hover:not(:disabled) {
-            transform: translate(-2px, -2px);
-            box-shadow: 7px 7px 0 var(--vermilion)
-        }
-        
-        .brush:active:not(:disabled) {
-            transform: translate(3px, 3px);
-            box-shadow: 1px 1px 0 var(--vermilion)
-        }
-        
-        .brush:disabled {
-            opacity: .3;
-            cursor: default;
-            box-shadow: 5px 5px 0 var(--faint)
-        }
-        
-        .ghost {
-            background: var(--card);
-            color: var(--ink);
-            border: var(--rule);
-            font: 600 12.5px/1 ui-sans-serif, sans-serif;
-            padding: 8px 13px;
-            cursor: pointer;
-            box-shadow: 3px 3px 0 var(--ink);
-            transition: .15s var(--ease)
-        }
-        
-        .ghost:hover {
-            transform: translate(-1px, -1px);
-            box-shadow: 4px 4px 0 var(--vermilion)
-        }
-        
-        .ghost:active {
-            transform: translate(2px, 2px);
-            box-shadow: 0 0 0 var(--ink)
-        }
-        
-        .ghost[aria-pressed="true"] {
-            background: var(--ink);
-            color: #fffcf5
-        }
-        
-        :focus-visible {
-            outline: 3px solid var(--cobalt);
-            outline-offset: 2px
-        }
-        /* ───────────────────────────── choices ─────────────────────────────
+.brush::before{content:""; display:inline-block; width:17px; height:17px;
+  vertical-align:-3px; margin-right:10px; background:currentColor;
+  -webkit-mask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'><g fill='black'><circle cx='37.50' cy='24.00' r='7.6'/><circle cx='30.75' cy='35.69' r='7.6'/><circle cx='17.25' cy='35.69' r='7.6'/><circle cx='10.50' cy='24.00' r='7.6'/><circle cx='17.25' cy='12.31' r='7.6'/><circle cx='30.75' cy='12.31' r='7.6'/></g><circle cx='24' cy='24' r='8' fill='black'/></svg>") no-repeat center/100%;
+  mask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'><g fill='black'><circle cx='37.50' cy='24.00' r='7.6'/><circle cx='30.75' cy='35.69' r='7.6'/><circle cx='17.25' cy='35.69' r='7.6'/><circle cx='10.50' cy='24.00' r='7.6'/><circle cx='17.25' cy='12.31' r='7.6'/><circle cx='30.75' cy='12.31' r='7.6'/></g><circle cx='24' cy='24' r='8' fill='black'/></svg>") no-repeat center/100%;
+  transition:transform .4s var(--ease)}
+.brush:hover:not(:disabled)::before{transform:rotate(90deg)}
+.brush:disabled::before{display:none}
+.brush:hover:not(:disabled){transform:translate(-2px,-2px); box-shadow:7px 7px 0 var(--vermilion)}
+.brush:active:not(:disabled){transform:translate(3px,3px); box-shadow:1px 1px 0 var(--vermilion)}
+.brush:disabled{opacity:.3; cursor:default; box-shadow:5px 5px 0 var(--faint)}
+
+.ghost{background:var(--card); color:var(--ink); border:var(--rule);
+  font:600 12.5px/1 ui-sans-serif,sans-serif; padding:8px 13px; cursor:pointer;
+  box-shadow:3px 3px 0 var(--ink); transition:.15s var(--ease)}
+.ghost:hover{transform:translate(-1px,-1px); box-shadow:4px 4px 0 var(--vermilion)}
+.ghost:active{transform:translate(2px,2px); box-shadow:0 0 0 var(--ink)}
+.ghost[aria-pressed="true"]{background:var(--ink); color:#fffcf5}
+
+:focus-visible{outline:3px solid var(--cobalt); outline-offset:2px}
+
+/* ───────────────────────────── choices ─────────────────────────────
    Medium and skill level. Chips rather than a <select>, because the choice
    changes what the app will do and deserves to be visible, not folded away. */
-        
-        .choices {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 7px;
-            margin-top: 4px
-        }
-        
-        .choice {
-            font: 600 12.5px/1 ui-sans-serif, sans-serif;
-            padding: 8px 11px;
-            cursor: pointer;
-            border: var(--rule);
-            background: var(--card);
-            color: var(--ink-2);
-            transition: .16s var(--ease)
-        }
-        
-        .choice:hover {
-            transform: translateY(-2px);
-            color: var(--ink)
-        }
-        
-        .choice[aria-pressed="true"] {
-            background: var(--c, var(--cobalt));
-            color: #fffcf5;
-            box-shadow: 3px 3px 0 var(--ink)
-        }
-        
-        .guide {
-            margin-top: 16px;
-            border: var(--rule);
-            border-left: 9px solid var(--sun);
-            background: #fffdf5;
-            padding: 13px 15px;
-            font-size: 14px
-        }
-        
-        .guide b {
-            font: 700 11px/1 ui-sans-serif, sans-serif;
-            letter-spacing: .12em;
-            text-transform: uppercase;
-            display: block;
-            margin-bottom: 7px;
-            color: var(--ink-2)
-        }
-        
-        .guide ul {
-            margin: 0;
-            padding-left: 17px
-        }
-        
-        .guide li {
-            margin: 5px 0;
-            color: var(--ink-2)
-        }
-        /* ───────────────────────────── empties ───────────────────────────── */
-        
-        .empty {
-            text-align: center;
-            padding: 80px 24px;
-            color: var(--ink-2)
-        }
-        
-        .empty .frame {
-            width: 120px;
-            height: 120px;
-            margin: 0 auto 20px;
-            border: var(--rule);
-            display: grid;
-            place-items: center;
-            background: var(--card);
-            box-shadow: var(--pop);
-            animation: tilt 7s ease-in-out infinite alternate
-        }
-        
-        @keyframes tilt {
-            from {
-                transform: rotate(-3deg)
-            }
-            to {
-                transform: rotate(3deg)
-            }
-        }
-        
-        .empty p {
-            margin: 0;
-            font-style: italic;
-            font-size: 16px
-        }
-        /* ───────────────────────────── pattern view ───────────────────────────── */
-        
-        .canvas {
-            background: var(--card);
-            border: var(--rule);
-            padding: 16px;
-            box-shadow: var(--pop);
-            /* Sticky so the painting stays on screen while the recipe list scrolls past.
+.choices{display:flex; flex-wrap:wrap; gap:7px; margin-top:4px}
+.choice{font:600 12.5px/1 ui-sans-serif,sans-serif; padding:8px 11px; cursor:pointer;
+  border:var(--rule); background:var(--card); color:var(--ink-2);
+  transition:.16s var(--ease)}
+.choice:hover{transform:translateY(-2px); color:var(--ink)}
+.choice[aria-pressed="true"]{background:var(--c,var(--cobalt)); color:#fffcf5;
+  box-shadow:3px 3px 0 var(--ink)}
+.guide{margin-top:16px; border:var(--rule); border-left:9px solid var(--sun);
+  background:#fffdf5; padding:13px 15px; font-size:14px}
+.guide b{font:700 11px/1 ui-sans-serif,sans-serif; letter-spacing:.12em;
+  text-transform:uppercase; display:block; margin-bottom:7px; color:var(--ink-2)}
+.guide ul{margin:0; padding-left:17px}
+.guide li{margin:5px 0; color:var(--ink-2)}
+
+/* ───────────────────────────── empties ───────────────────────────── */
+.empty{text-align:center; padding:80px 24px; color:var(--ink-2)}
+.empty .frame{width:120px; height:120px; margin:0 auto 20px; border:var(--rule);
+  display:grid; place-items:center; background:var(--card); box-shadow:var(--pop);
+  animation:tilt 7s ease-in-out infinite alternate}
+@keyframes tilt{from{transform:rotate(-3deg)}to{transform:rotate(3deg)}}
+.empty p{margin:0; font-style:italic; font-size:16px}
+
+/* ───────────────────────────── pattern view ───────────────────────────── */
+.canvas{background:var(--card); border:var(--rule); padding:16px; box-shadow:var(--pop);
+  /* Sticky so the painting stays on screen while the recipe list scrolls past.
      Without this the highlight-on-hover fires against a canvas nobody can see,
      which makes the single best interaction in the app invisible. */
-            position: sticky;
-            top: 84px;
-            z-index: 2
-        }
-        
-        .canvas .mat {
-            display: flex;
-            justify-content: center;
-            animation: reveal .55s var(--ease) both
-        }
-        
-        @keyframes reveal {
-            from {
-                opacity: 0;
-                clip-path: inset(0 100% 0 0)
-            }
-            to {
-                clip-path: inset(0)
-            }
-        }
-        
-        .canvas svg {
-            max-height: 56vh;
-            width: auto;
-            max-width: 100%
-        }
-        
-        .toolbar {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 14px;
-            align-items: center;
-            flex-wrap: wrap
-        }
-        
-        .counts {
-            display: flex;
-            gap: 26px;
-            margin-top: 16px;
-            padding-top: 14px;
-            border-top: 2px solid var(--ink);
-            flex-wrap: wrap
-        }
-        
-        .counts b {
-            display: block;
-            font: 700 22px/1 ui-sans-serif, sans-serif;
-            font-variant-numeric: tabular-nums;
-            letter-spacing: -.02em
-        }
-        
-        .counts span {
-            font: 700 10.5px/1 ui-sans-serif, sans-serif;
-            letter-spacing: .11em;
-            text-transform: uppercase;
-            color: var(--ink-2)
-        }
-        /* region highlighting */
-        
-        .canvas.focusing svg path:not(.lit) {
-            opacity: .2;
-            transition: opacity .2s
-        }
-        
-        .canvas svg path.lit {
-            fill: var(--hl)!important;
-            stroke: var(--ink);
-            stroke-width: 1.6;
-            transition: fill .2s
-        }
-        
-        .recipes {
-            list-style: none;
-            margin: 0;
-            padding: 0
-        }
-        
-        .recipes .rx {
-            display: flex;
-            gap: 14px;
-            align-items: center;
-            padding: 13px 12px;
-            border-bottom: 2px solid var(--paper-2);
-            cursor: pointer;
-            position: relative;
-            transition: .15s var(--ease)
-        }
-        
-        .recipes .rx:hover {
-            background: var(--paper);
-            transform: translateX(4px)
-        }
-        
-        .recipes .rx:last-child {
-            border-bottom: 0
-        }
-        
-        .recipes .chip {
-            display: grid;
-            place-items: center;
-            width: 38px;
-            height: 38px;
-            flex: none;
-            border: var(--rule);
-            font: 700 15px/1 ui-sans-serif, sans-serif;
-            box-shadow: 3px 3px 0 var(--ink);
-            transition: transform .2s var(--ease)
-        }
-        
-        .recipes .rx:hover .chip {
-            transform: rotate(-8deg)
-        }
-        
-        .recipes .how {
-            flex: 1;
-            min-width: 0;
-            font-size: 15px
-        }
-        
-        .recipes .how em {
-            font-style: normal;
-            font-weight: 700;
-            color: var(--vermilion)
-        }
-        
-        .recipes .meta {
-            text-align: right;
-            flex: none
-        }
-        
-        .recipes .flag {
-            font: 700 9.5px/1 ui-sans-serif, sans-serif;
-            letter-spacing: .09em;
-            text-transform: uppercase;
-            border: 1.5px solid var(--sap);
-            color: var(--sap);
-            padding: 4px 6px;
-            display: inline-block
-        }
-        
-        .recipes .flag.approx {
-            border-color: var(--sun);
-            color: #8a6400
-        }
-        
-        .recipes .pct {
-            font: 400 11px/1 ui-sans-serif, sans-serif;
-            color: var(--ink-2);
-            margin-top: 6px
-        }
-        
-        @media (max-width:560px) {
-            .recipes .rx {
-                flex-wrap: wrap
-            }
-            .recipes .how {
-                flex: 1 1 100%;
-                order: 3;
-                margin-top: 4px
-            }
-            .recipes .meta {
-                margin-left: auto;
-                text-align: right
-            }
-            .recipes .pct {
-                display: inline;
-                margin: 0 0 0 9px
-            }
-        }
-        /* ───────────────────────────── mixing bench ───────────────────────────── */
-        
-        .mixres {
-            display: grid;
-            grid-template-columns: 1fr auto 1fr;
-            gap: 14px;
-            align-items: center;
-            text-align: center;
-            margin-top: 4px
-        }
-        
-        @media (max-width:520px) {
-            .mixres {
-                grid-template-columns: 1fr
-            }
-        }
-        
-        .mixres .blob {
-            width: 66px;
-            height: 60px;
-            margin: 0 auto 10px;
-            border: var(--rule);
-            border-radius: 50% 50% 46% 54% / 56% 58% 42% 44%
-        }
-        
-        .mixres select {
-            width: 100%;
-            font: 600 13px/1 ui-sans-serif, sans-serif;
-            padding: 8px;
-            border: var(--rule);
-            background: var(--card);
-            cursor: pointer
-        }
-        
-        .mixres .pool {
-            width: 112px;
-            height: 100px;
-            margin: 0 auto 14px;
-            border-radius: 49% 51% 44% 56% / 57% 60% 40% 43%;
-            box-shadow: inset -5px -8px 16px rgba(0, 0, 0, .26), inset 5px 6px 11px rgba(255, 255, 255, .34), 0 6px 0 -2px rgba(22, 18, 14, .5);
-            transition: background .35s
-        }
-        
-        .mixres .pool.pulse {
-            animation: squish .45s cubic-bezier(.3, 1.6, .5, 1)
-        }
-        
-        @keyframes squish {
-            40% {
-                transform: scale(1.1, .9) rotate(-3deg)
-            }
-        }
-        
-        .vs {
-            font: 700 13px/1 ui-sans-serif, sans-serif;
-            color: var(--ink-2);
-            font-variant-numeric: tabular-nums
-        }
-        
-        .compare {
-            display: flex;
-            gap: 22px;
-            justify-content: center;
-            margin-top: 22px;
-            padding-top: 20px;
-            border-top: 2px solid var(--ink)
-        }
-        
-        .compare div {
-            text-align: center
-        }
-        
-        .compare .sq {
-            width: 58px;
-            height: 58px;
-            margin: 0 auto 9px;
-            border: var(--rule);
-            box-shadow: var(--pop-sm)
-        }
-        
-        .compare small {
-            font: 600 11px/1.35 ui-sans-serif, sans-serif;
-            color: var(--ink-2);
-            display: block
-        }
-        /* The target swatch on the mix checker. Square on purpose — it is a value
-   you typed, not paint you mixed, and the two should not look alike. */
-        
-        #blob-t {
-            border: var(--rule);
-            box-shadow: 3px 3px 0 var(--ink)
-        }
-        /* ───────────────────────────── verdict ───────────────────────────── */
-        
-        .verdict {
-            text-align: center;
-            padding: 10px 0 0
-        }
-        
-        .pair {
-            display: flex;
-            justify-content: center;
-            align-items: stretch;
-            gap: 0;
-            margin-bottom: 8px
-        }
-        
-        .pair .half {
-            width: 128px;
-            height: 128px;
-            position: relative;
-            border: var(--rule)
-        }
-        
-        .pair .half:first-child {
-            border-right: 0
-        }
-        
-        .pair .half span {
-            position: absolute;
-            bottom: -28px;
-            left: 0;
-            right: 0;
-            font: 700 10px/1 ui-sans-serif, sans-serif;
-            letter-spacing: .13em;
-            text-transform: uppercase;
-            color: var(--ink-2)
-        }
-        
-        .verdict h3 {
-            font: 700 clamp(24px, 3.6vw, 32px)/1.1 ui-sans-serif, sans-serif;
-            letter-spacing: -.03em;
-            margin: 48px 0 8px
-        }
-        
-        .verdict h3 em {
-            font-style: normal;
-            color: var(--vermilion)
-        }
-        
-        .verdict .say {
-            color: var(--ink-2);
-            max-width: 46ch;
-            margin: 0 auto
-        }
-        
-        .gauge {
-            margin: 30px auto 0;
-            max-width: 440px
-        }
-        
-        .gauge .track {
-            height: 14px;
-            border: var(--rule);
-            position: relative;
-            background: linear-gradient(90deg, var(--sap) 0 8%, #8aa14a 8% 20%, var(--sun) 20% 45%, var(--vermilion) 45% 100%)
-        }
-        
-        .gauge .pin {
-            position: absolute;
-            top: -7px;
-            width: 6px;
-            height: 26px;
-            background: var(--ink);
-            box-shadow: 0 0 0 3px var(--card);
-            transition: left .6s var(--ease)
-        }
-        
-        .gauge .scale {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 9px;
-            font: 600 10px/1 ui-sans-serif, sans-serif;
-            letter-spacing: .06em;
-            text-transform: uppercase;
-            color: var(--ink-2)
-        }
-        
-        .facts {
-            display: flex;
-            justify-content: center;
-            gap: 34px;
-            margin-top: 28px;
-            padding-top: 22px;
-            border-top: 2px solid var(--ink);
-            flex-wrap: wrap
-        }
-        
-        .facts div {
-            text-align: center
-        }
-        
-        .facts b {
-            display: block;
-            font: 700 21px/1 ui-sans-serif, sans-serif;
-            font-variant-numeric: tabular-nums
-        }
-        
-        .facts span {
-            font: 700 10px/1 ui-sans-serif, sans-serif;
-            letter-spacing: .11em;
-            text-transform: uppercase;
-            color: var(--ink-2)
-        }
-        
-        .aside {
-            font-style: italic;
-            color: var(--ink-2);
-            font-size: 13.5px;
-            margin-top: 18px;
-            line-height: 1.6
-        }
-        
-        .aside a {
-            color: var(--vermilion)
-        }
-        
-        .chk {
-            display: flex;
-            align-items: flex-start;
-            gap: 10px;
-            font-size: 14.5px;
-            cursor: pointer;
-            margin-top: 12px;
-            line-height: 1.45
-        }
-        
-        .chk input {
-            accent-color: var(--vermilion);
-            margin-top: 3px;
-            flex: none;
-            width: 17px;
-            height: 17px
-        }
-        
-        .gridfacts {
-            display: flex;
-            gap: 28px;
-            flex-wrap: wrap;
-            margin-top: 16px;
-            padding-top: 15px;
-            border-top: 2px solid var(--ink)
-        }
-        
-        .gridfacts b {
-            display: block;
-            font: 700 23px/1 ui-sans-serif, sans-serif;
-            font-variant-numeric: tabular-nums;
-            letter-spacing: -.02em
-        }
-        
-        .gridfacts span {
-            font: 700 10.5px/1 ui-sans-serif, sans-serif;
-            letter-spacing: .1em;
-            text-transform: uppercase;
-            color: var(--ink-2)
-        }
-        
-        .warn {
-            background: #fff6dd;
-            border: var(--rule);
-            border-left: 9px solid var(--sun);
-            color: #6b4e00;
-            padding: 13px 15px;
-            font-size: 14px;
-            margin-top: 16px
-        }
-        
-        .measures {
-            list-style: none;
-            margin: 20px 0 0;
-            padding: 0
-        }
-        
-        .measures li {
-            padding: 15px 0;
-            border-top: 2px solid var(--paper-2)
-        }
-        
-        .measures .top {
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            gap: 12px
-        }
-        
-        .measures .nm {
-            font: 700 11px/1 ui-sans-serif, sans-serif;
-            letter-spacing: .13em;
-            text-transform: uppercase;
-            color: var(--ink-2)
-        }
-        
-        .measures .fig {
-            font: 700 21px/1 ui-sans-serif, sans-serif;
-            font-variant-numeric: tabular-nums
-        }
-        
-        .measures .say {
-            color: var(--ink-2);
-            font-size: 14.5px;
-            margin-top: 6px
-        }
-        
-        .nextstep {
-            background: var(--card);
-            border: var(--rule);
-            border-left: 9px solid var(--vermilion);
-            padding: 16px 18px;
-            margin-top: 24px;
-            box-shadow: var(--pop-sm)
-        }
-        
-        .nextstep .hd {
-            font: 700 10.5px/1 ui-sans-serif, sans-serif;
-            letter-spacing: .13em;
-            text-transform: uppercase;
-            color: var(--vermilion);
-            margin-bottom: 8px
-        }
-        
-        .twoup {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 14px
-        }
-        
-        @media (max-width:520px) {
-            .twoup {
-                grid-template-columns: 1fr
-            }
-        }
-        /* ───────────────────────────── studio ───────────────────────────── */
-        
-        .field {
-            margin-top: 18px
-        }
-        
-        .field label {
-            display: block;
-            font: 700 11.5px/1 ui-sans-serif, sans-serif;
-            letter-spacing: .11em;
-            text-transform: uppercase;
-            color: var(--ink-2);
-            margin-bottom: 8px
-        }
-        
-        .field input[type=text],
-        .field select {
-            width: 100%;
-            font: inherit;
-            font-size: 15px;
-            color: var(--ink);
-            background: #fffdf8;
-            border: var(--rule);
-            padding: 11px 12px
-        }
-        
-        .field input[type=text]:focus,
-        .field select:focus {
-            outline: none;
-            box-shadow: 4px 4px 0 var(--cobalt)
-        }
-        
-        .tiles {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
-            gap: 24px
-        }
-        
-        .tile {
-            display: block;
-            width: 100%;
-            text-align: left;
-            border: 0;
-            padding: 0;
-            background: none;
-            font: inherit;
-            color: inherit;
-            cursor: pointer;
-            animation: blockIn .45s var(--ease) both;
-            transition: transform .22s var(--ease)
-        }
-        
-        .tile:nth-child(2) {
-            animation-delay: .06s
-        }
-        
-        .tile:nth-child(3) {
-            animation-delay: .12s
-        }
-        
-        .tile:nth-child(4) {
-            animation-delay: .18s
-        }
-        
-        .tile:nth-child(n+5) {
-            animation-delay: .24s
-        }
-        
-        .tile:hover {
-            transform: translate(-3px, -5px) rotate(-1.2deg)
-        }
-        /* A painting on a wall, not a thumbnail in a list. */
-        
-        .tile .mount {
-            display: block;
-            /* a span is inline: padding and the frame collapse without this */
-            background: var(--card);
-            border: var(--rule);
-            padding: 10px 10px 12px;
-            box-shadow: var(--pop);
-            transition: box-shadow .22s var(--ease)
-        }
-        
-        .tile:hover .mount {
-            box-shadow: 9px 9px 0 var(--cobalt)
-        }
-        
-        .tile:nth-child(3n+2):hover .mount {
-            box-shadow: 9px 9px 0 var(--vermilion)
-        }
-        
-        .tile:nth-child(3n+3):hover .mount {
-            box-shadow: 9px 9px 0 var(--sap)
-        }
-        
-        .tile .mount img {
-            display: block;
-            width: 100%;
-            aspect-ratio: 1;
-            object-fit: cover;
-            background: var(--paper-2)
-        }
-        
-        .tile .cap {
-            display: block;
-            margin-top: 11px
-        }
-        
-        .tile .ti {
-            display: block;
-            font: 700 15px/1.25 ui-sans-serif, sans-serif;
-            letter-spacing: -.015em
-        }
-        
-        .tile .sub {
-            display: block;
-            margin-top: 4px;
-            font: 600 11.5px/1.3 ui-sans-serif, sans-serif;
-            color: var(--ink-2)
-        }
-        
-        .crumb {
-            background: none;
-            border: 0;
-            padding: 0;
-            font: 600 13.5px/1 ui-sans-serif, sans-serif;
-            color: var(--ink-2);
-            cursor: pointer;
-            margin-bottom: 16px;
-            transition: .15s
-        }
-        
-        .crumb:hover {
-            color: var(--vermilion);
-            transform: translateX(-3px)
-        }
-        
-        .refshot {
-            display: block;
-            width: 100%;
-            border: var(--rule)
-        }
-        
-        .rowbtns {
-            display: flex;
-            gap: 9px;
-            margin-top: 20px;
-            flex-wrap: wrap
-        }
-        
-        .shots {
-            list-style: none;
-            margin: 0;
-            padding: 0
-        }
-        
-        .shots li {
-            display: flex;
-            gap: 16px;
-            padding: 18px 0;
-            border-top: 2px solid var(--paper-2);
-            animation: blockIn .4s var(--ease) both
-        }
-        
-        .shots li:first-child {
-            border-top: 0;
-            padding-top: 4px
-        }
-        
-        .shots li:nth-child(2) {
-            animation-delay: .07s
-        }
-        
-        .shots li:nth-child(n+3) {
-            animation-delay: .14s
-        }
-        
-        .shots img {
-            width: 80px;
-            height: 80px;
-            object-fit: cover;
-            flex: none;
-            border: var(--rule);
-            box-shadow: var(--pop-sm)
-        }
-        
-        .shots .when {
-            font: 700 10px/1 ui-sans-serif, sans-serif;
-            letter-spacing: .13em;
-            text-transform: uppercase;
-            color: var(--ink-2)
-        }
-        
-        .shots .hd {
-            font: 700 15.5px/1.35 ui-sans-serif, sans-serif;
-            margin-top: 6px
-        }
-        
-        .shots .note {
-            font-style: italic;
-            color: var(--ink-2);
-            font-size: 14px;
-            margin-top: 4px
-        }
-        
-        .chips {
-            display: flex;
-            gap: 7px;
-            flex-wrap: wrap;
-            margin-top: 10px
-        }
-        
-        .chips span {
-            font: 600 11px/1 ui-sans-serif, sans-serif;
-            border: 1.5px solid var(--faint);
-            padding: 5px 8px;
-            color: var(--ink-2);
-            font-variant-numeric: tabular-nums
-        }
-        
-        .trends {
-            list-style: none;
-            margin: 18px 0 0;
-            padding: 0
-        }
-        
-        .trends li {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            padding: 13px 0;
-            border-top: 2px solid var(--paper-2)
-        }
-        
-        .trends .nm {
-            font: 700 11px/1 ui-sans-serif, sans-serif;
-            letter-spacing: .13em;
-            text-transform: uppercase;
-            color: var(--ink-2);
-            width: 100px;
-            flex: none
-        }
-        
-        .trends .mv {
-            font: 700 17px/1 ui-sans-serif, sans-serif;
-            font-variant-numeric: tabular-nums
-        }
-        
-        .trends .mv i {
-            font-style: normal;
-            color: var(--ink-2);
-            margin: 0 7px;
-            font-weight: 400
-        }
-        
-        .trends .tag {
-            margin-left: auto;
-            font: 700 10.5px/1 ui-sans-serif, sans-serif;
-            letter-spacing: .07em;
-            text-transform: uppercase;
-            padding: 6px 9px;
-            border: var(--rule)
-        }
-        
-        .trends .closer {
-            background: var(--sap);
-            color: #fffcf5
-        }
-        
-        .trends .further {
-            background: var(--vermilion);
-            color: #fffcf5
-        }
-        
-        .trends .flat {
-            background: var(--paper-2);
-            color: var(--ink-2)
-        }
-        /* ───────────────────────────── states ───────────────────────────── */
-        
-        .err {
-            background: #ffeee8;
-            border: var(--rule);
-            border-left: 9px solid var(--vermilion);
-            color: #8e2d0b;
-            padding: 14px 16px;
-            font-size: 14.5px
-        }
-        /* Three squares, because a spinner would be the one round thing on the page. */
-        
-        .load {
-            display: inline-block;
-            width: 34px;
-            height: 9px;
-            vertical-align: -1px;
-            margin-right: 9px;
-            background: linear-gradient(#fffcf5, #fffcf5) 0 0/9px 9px no-repeat, linear-gradient(#fffcf5, #fffcf5) 50% 0/9px 9px no-repeat, linear-gradient(#fffcf5, #fffcf5) 100% 0/9px 9px no-repeat;
-            animation: hop .9s steps(1) infinite
-        }
-        
-        @keyframes hop {
-            0% {
-                background-position: 0 -4px, 50% 0, 100% 0
-            }
-            33% {
-                background-position: 0 0, 50% -4px, 100% 0
-            }
-            66% {
-                background-position: 0 0, 50% 0, 100% -4px
-            }
-        }
-        
-        .fade {
-            animation: panelIn .45s var(--ease) both
-        }
-        
-        @media (prefers-reduced-motion:reduce) {
-            *,
-            *::before,
-            *::after {
-                animation-duration: .001ms!important;
-                animation-iteration-count: 1!important;
-                transition-duration: .001ms!important;
-                scroll-behavior: auto!important
-            }
-            h1 em::before {
-                transform: scaleX(1)
-            }
-        }
-        /* ───────────────────────────── the bench ───────────────────────────── */
-        
-        .bench {
-            margin-top: 32px
-        }
-        
-        .bench .inner {
-            display: grid;
-            grid-template-columns: 1fr auto 1fr;
-            gap: 26px;
-            align-items: center
-        }
-        
-        @media (max-width:700px) {
-            .bench .inner {
-                grid-template-columns: 1fr;
-                text-align: center
-            }
-        }
-        
-        .jar {
-            text-align: center
-        }
-        
-        .jar select {
-            font: 600 13px/1 ui-sans-serif, sans-serif;
-            padding: 9px 10px;
-            border: var(--rule);
-            background: var(--card);
-            color: var(--ink);
-            max-width: 190px;
-            width: 100%;
-            cursor: pointer
-        }
-        
-        .jar select:focus {
-            outline: none;
-            box-shadow: 3px 3px 0 var(--cobalt)
-        }
-        
-        .jar .blob {
-            width: 64px;
-            height: 58px;
-            margin: 0 auto 12px;
-            border: var(--rule);
-            border-radius: 52% 48% 43% 57% / 56% 62% 38% 44%;
-            box-shadow: inset -4px -6px 11px rgba(0, 0, 0, .26), inset 4px 5px 9px rgba(255, 255, 255, .36)
-        }
-    </style>
-</head>
+  position:sticky; top:84px; z-index:2}
+.canvas .mat{display:flex; justify-content:center; animation:reveal .55s var(--ease) both}
+@keyframes reveal{from{opacity:0; clip-path:inset(0 100% 0 0)}to{clip-path:inset(0)}}
+.canvas svg{max-height:56vh; width:auto; max-width:100%}
+.toolbar{display:flex; gap:8px; margin-bottom:14px; align-items:center; flex-wrap:wrap}
+.counts{display:flex; gap:26px; margin-top:16px; padding-top:14px;
+  border-top:2px solid var(--ink); flex-wrap:wrap}
+.counts b{display:block; font:700 22px/1 ui-sans-serif,sans-serif;
+  font-variant-numeric:tabular-nums; letter-spacing:-.02em}
+.counts span{font:700 10.5px/1 ui-sans-serif,sans-serif; letter-spacing:.11em;
+  text-transform:uppercase; color:var(--ink-2)}
 
+/* region highlighting */
+.canvas.focusing svg path:not(.lit){opacity:.2; transition:opacity .2s}
+.canvas svg path.lit{fill:var(--hl)!important; stroke:var(--ink); stroke-width:1.6;
+  transition:fill .2s}
+
+.recipes{list-style:none; margin:0; padding:0}
+.recipes .rx{display:flex; gap:14px; align-items:center; padding:13px 12px;
+  border-bottom:2px solid var(--paper-2); cursor:pointer; position:relative;
+  transition:.15s var(--ease)}
+.recipes .rx:hover{background:var(--paper); transform:translateX(4px)}
+.recipes .rx:last-child{border-bottom:0}
+.recipes .chip{display:grid; place-items:center; width:38px; height:38px; flex:none;
+  border:var(--rule); font:700 15px/1 ui-sans-serif,sans-serif;
+  box-shadow:3px 3px 0 var(--ink); transition:transform .2s var(--ease)}
+.recipes .rx:hover .chip{transform:rotate(-8deg)}
+.recipes .how{flex:1; min-width:0; font-size:15px}
+.recipes .how em{font-style:normal; font-weight:700; color:var(--vermilion)}
+.recipes .meta{text-align:right; flex:none}
+.recipes .flag{font:700 9.5px/1 ui-sans-serif,sans-serif; letter-spacing:.09em;
+  text-transform:uppercase; border:1.5px solid var(--sap); color:var(--sap);
+  padding:4px 6px; display:inline-block}
+.recipes .flag.approx{border-color:var(--sun); color:#8a6400}
+.recipes .pct{font:400 11px/1 ui-sans-serif,sans-serif; color:var(--ink-2); margin-top:6px}
+@media (max-width:560px){
+  .recipes .rx{flex-wrap:wrap}
+  .recipes .how{flex:1 1 100%; order:3; margin-top:4px}
+  .recipes .meta{margin-left:auto; text-align:right}
+  .recipes .pct{display:inline; margin:0 0 0 9px}
+}
+
+/* ───────────────────────────── mixing bench ───────────────────────────── */
+.mixres{display:grid; grid-template-columns:1fr auto 1fr; gap:14px; align-items:center;
+  text-align:center; margin-top:4px}
+@media (max-width:520px){.mixres{grid-template-columns:1fr}}
+.mixres .blob{width:66px; height:60px; margin:0 auto 10px; border:var(--rule);
+  border-radius:50% 50% 46% 54% / 56% 58% 42% 44%}
+.mixres select{width:100%; font:600 13px/1 ui-sans-serif,sans-serif; padding:8px;
+  border:var(--rule); background:var(--card); cursor:pointer}
+.mixres .pool{width:112px; height:100px; margin:0 auto 14px;
+  border-radius:49% 51% 44% 56% / 57% 60% 40% 43%;
+  box-shadow:inset -5px -8px 16px rgba(0,0,0,.26), inset 5px 6px 11px rgba(255,255,255,.34),
+             0 6px 0 -2px rgba(22,18,14,.5); transition:background .35s}
+.mixres .pool.pulse{animation:squish .45s cubic-bezier(.3,1.6,.5,1)}
+@keyframes squish{40%{transform:scale(1.1,.9) rotate(-3deg)}}
+.vs{font:700 13px/1 ui-sans-serif,sans-serif; color:var(--ink-2);
+  font-variant-numeric:tabular-nums}
+.compare{display:flex; gap:22px; justify-content:center; margin-top:22px; padding-top:20px;
+  border-top:2px solid var(--ink)}
+.compare div{text-align:center}
+.compare .sq{width:58px; height:58px; margin:0 auto 9px; border:var(--rule);
+  box-shadow:var(--pop-sm)}
+.compare small{font:600 11px/1.35 ui-sans-serif,sans-serif; color:var(--ink-2); display:block}
+
+/* The target swatch on the mix checker. Square on purpose — it is a value
+   you typed, not paint you mixed, and the two should not look alike. */
+#blob-t{border:var(--rule); box-shadow:3px 3px 0 var(--ink)}
+
+/* ───────────────────────────── verdict ───────────────────────────── */
+.verdict{text-align:center; padding:10px 0 0}
+.pair{display:flex; justify-content:center; align-items:stretch; gap:0; margin-bottom:8px}
+.pair .half{width:128px; height:128px; position:relative; border:var(--rule)}
+.pair .half:first-child{border-right:0}
+.pair .half span{position:absolute; bottom:-28px; left:0; right:0;
+  font:700 10px/1 ui-sans-serif,sans-serif; letter-spacing:.13em;
+  text-transform:uppercase; color:var(--ink-2)}
+.verdict h3{font:700 clamp(24px,3.6vw,32px)/1.1 ui-sans-serif,sans-serif;
+  letter-spacing:-.03em; margin:48px 0 8px}
+.verdict h3 em{font-style:normal; color:var(--vermilion)}
+.verdict .say{color:var(--ink-2); max-width:46ch; margin:0 auto}
+.gauge{margin:30px auto 0; max-width:440px}
+.gauge .track{height:14px; border:var(--rule); position:relative;
+  background:linear-gradient(90deg,var(--sap) 0 8%,#8aa14a 8% 20%,var(--sun) 20% 45%,
+    var(--vermilion) 45% 100%)}
+.gauge .pin{position:absolute; top:-7px; width:6px; height:26px; background:var(--ink);
+  box-shadow:0 0 0 3px var(--card); transition:left .6s var(--ease)}
+.gauge .scale{display:flex; justify-content:space-between; margin-top:9px;
+  font:600 10px/1 ui-sans-serif,sans-serif; letter-spacing:.06em;
+  text-transform:uppercase; color:var(--ink-2)}
+.facts{display:flex; justify-content:center; gap:34px; margin-top:28px; padding-top:22px;
+  border-top:2px solid var(--ink); flex-wrap:wrap}
+.facts div{text-align:center}
+.facts b{display:block; font:700 21px/1 ui-sans-serif,sans-serif;
+  font-variant-numeric:tabular-nums}
+.facts span{font:700 10px/1 ui-sans-serif,sans-serif; letter-spacing:.11em;
+  text-transform:uppercase; color:var(--ink-2)}
+
+.aside{font-style:italic; color:var(--ink-2); font-size:13.5px; margin-top:18px; line-height:1.6}
+.aside a{color:var(--vermilion)}
+.chk{display:flex; align-items:flex-start; gap:10px; font-size:14.5px; cursor:pointer;
+  margin-top:12px; line-height:1.45}
+.chk input{accent-color:var(--vermilion); margin-top:3px; flex:none; width:17px; height:17px}
+
+.gridfacts{display:flex; gap:28px; flex-wrap:wrap; margin-top:16px; padding-top:15px;
+  border-top:2px solid var(--ink)}
+.gridfacts b{display:block; font:700 23px/1 ui-sans-serif,sans-serif;
+  font-variant-numeric:tabular-nums; letter-spacing:-.02em}
+.gridfacts span{font:700 10.5px/1 ui-sans-serif,sans-serif; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--ink-2)}
+.warn{background:#fff6dd; border:var(--rule); border-left:9px solid var(--sun);
+  color:#6b4e00; padding:13px 15px; font-size:14px; margin-top:16px}
+
+.measures{list-style:none; margin:20px 0 0; padding:0}
+.measures li{padding:15px 0; border-top:2px solid var(--paper-2)}
+.measures .top{display:flex; justify-content:space-between; align-items:baseline; gap:12px}
+.measures .nm{font:700 11px/1 ui-sans-serif,sans-serif; letter-spacing:.13em;
+  text-transform:uppercase; color:var(--ink-2)}
+.measures .fig{font:700 21px/1 ui-sans-serif,sans-serif;
+  font-variant-numeric:tabular-nums}
+.measures .say{color:var(--ink-2); font-size:14.5px; margin-top:6px}
+.nextstep{background:var(--card); border:var(--rule); border-left:9px solid var(--vermilion);
+  padding:16px 18px; margin-top:24px; box-shadow:var(--pop-sm)}
+.nextstep .hd{font:700 10.5px/1 ui-sans-serif,sans-serif; letter-spacing:.13em;
+  text-transform:uppercase; color:var(--vermilion); margin-bottom:8px}
+.twoup{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+@media (max-width:520px){.twoup{grid-template-columns:1fr}}
+
+/* ───────────────────────────── studio ───────────────────────────── */
+.field{margin-top:18px}
+.field label{display:block; font:700 11.5px/1 ui-sans-serif,sans-serif; letter-spacing:.11em;
+  text-transform:uppercase; color:var(--ink-2); margin-bottom:8px}
+.field input[type=text], .field select{width:100%; font:inherit; font-size:15px;
+  color:var(--ink); background:#fffdf8; border:var(--rule); padding:11px 12px}
+.field input[type=text]:focus, .field select:focus{outline:none;
+  box-shadow:4px 4px 0 var(--cobalt)}
+
+.tiles{display:grid; grid-template-columns:repeat(auto-fill,minmax(176px,1fr)); gap:24px}
+.tile{display:block; width:100%; text-align:left; border:0; padding:0; background:none;
+  font:inherit; color:inherit; cursor:pointer;
+  animation:blockIn .45s var(--ease) both;
+  transition:transform .22s var(--ease)}
+.tile:nth-child(2){animation-delay:.06s}
+.tile:nth-child(3){animation-delay:.12s}
+.tile:nth-child(4){animation-delay:.18s}
+.tile:nth-child(n+5){animation-delay:.24s}
+.tile:hover{transform:translate(-3px,-5px) rotate(-1.2deg)}
+/* A painting on a wall, not a thumbnail in a list. */
+.tile .mount{
+  display:block;  /* a span is inline: padding and the frame collapse without this */
+  background:var(--card); border:var(--rule); padding:10px 10px 12px;
+  box-shadow:var(--pop); transition:box-shadow .22s var(--ease)}
+.tile:hover .mount{box-shadow:9px 9px 0 var(--cobalt)}
+.tile:nth-child(3n+2):hover .mount{box-shadow:9px 9px 0 var(--vermilion)}
+.tile:nth-child(3n+3):hover .mount{box-shadow:9px 9px 0 var(--sap)}
+.tile .mount img{display:block; width:100%; aspect-ratio:1; object-fit:cover;
+  background:var(--paper-2)}
+.tile .cap{display:block; margin-top:11px}
+.tile .ti{display:block; font:700 15px/1.25 ui-sans-serif,sans-serif; letter-spacing:-.015em}
+.tile .sub{display:block; margin-top:4px; font:600 11.5px/1.3 ui-sans-serif,sans-serif;
+  color:var(--ink-2)}
+
+.crumb{background:none; border:0; padding:0; font:600 13.5px/1 ui-sans-serif,sans-serif;
+  color:var(--ink-2); cursor:pointer; margin-bottom:16px; transition:.15s}
+.crumb:hover{color:var(--vermilion); transform:translateX(-3px)}
+
+.refshot{display:block; width:100%; border:var(--rule)}
+.rowbtns{display:flex; gap:9px; margin-top:20px; flex-wrap:wrap}
+
+.shots{list-style:none; margin:0; padding:0}
+.shots li{display:flex; gap:16px; padding:18px 0; border-top:2px solid var(--paper-2);
+  animation:blockIn .4s var(--ease) both}
+.shots li:first-child{border-top:0; padding-top:4px}
+.shots li:nth-child(2){animation-delay:.07s}
+.shots li:nth-child(n+3){animation-delay:.14s}
+.shots img{width:80px; height:80px; object-fit:cover; flex:none; border:var(--rule);
+  box-shadow:var(--pop-sm)}
+.shots .when{font:700 10px/1 ui-sans-serif,sans-serif; letter-spacing:.13em;
+  text-transform:uppercase; color:var(--ink-2)}
+.shots .hd{font:700 15.5px/1.35 ui-sans-serif,sans-serif; margin-top:6px}
+.shots .note{font-style:italic; color:var(--ink-2); font-size:14px; margin-top:4px}
+.chips{display:flex; gap:7px; flex-wrap:wrap; margin-top:10px}
+.chips span{font:600 11px/1 ui-sans-serif,sans-serif; border:1.5px solid var(--faint);
+  padding:5px 8px; color:var(--ink-2); font-variant-numeric:tabular-nums}
+
+.trends{list-style:none; margin:18px 0 0; padding:0}
+.trends li{display:flex; align-items:center; gap:14px; padding:13px 0;
+  border-top:2px solid var(--paper-2)}
+.trends .nm{font:700 11px/1 ui-sans-serif,sans-serif; letter-spacing:.13em;
+  text-transform:uppercase; color:var(--ink-2); width:100px; flex:none}
+.trends .mv{font:700 17px/1 ui-sans-serif,sans-serif; font-variant-numeric:tabular-nums}
+.trends .mv i{font-style:normal; color:var(--ink-2); margin:0 7px; font-weight:400}
+.trends .tag{margin-left:auto; font:700 10.5px/1 ui-sans-serif,sans-serif;
+  letter-spacing:.07em; text-transform:uppercase; padding:6px 9px; border:var(--rule)}
+.trends .closer{background:var(--sap); color:#fffcf5}
+.trends .further{background:var(--vermilion); color:#fffcf5}
+.trends .flat{background:var(--paper-2); color:var(--ink-2)}
+
+/* ───────────────────────────── states ───────────────────────────── */
+.err{background:#ffeee8; border:var(--rule); border-left:9px solid var(--vermilion);
+  color:#8e2d0b; padding:14px 16px; font-size:14.5px}
+/* Three squares, because a spinner would be the one round thing on the page. */
+.load{display:inline-block; width:34px; height:9px; vertical-align:-1px; margin-right:9px;
+  background:
+    linear-gradient(#fffcf5,#fffcf5) 0 0/9px 9px no-repeat,
+    linear-gradient(#fffcf5,#fffcf5) 50% 0/9px 9px no-repeat,
+    linear-gradient(#fffcf5,#fffcf5) 100% 0/9px 9px no-repeat;
+  animation:hop .9s steps(1) infinite}
+@keyframes hop{
+  0%{background-position:0 -4px,50% 0,100% 0}
+  33%{background-position:0 0,50% -4px,100% 0}
+  66%{background-position:0 0,50% 0,100% -4px}
+}
+.fade{animation:panelIn .45s var(--ease) both}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important; animation-iteration-count:1!important;
+    transition-duration:.001ms!important; scroll-behavior:auto!important}
+  h1 em::before{transform:scaleX(1)}
+}
+
+/* ───────────────────────────── the bench ───────────────────────────── */
+.bench{margin-top:32px}
+.bench .inner{display:grid; grid-template-columns:1fr auto 1fr; gap:26px; align-items:center}
+@media (max-width:700px){.bench .inner{grid-template-columns:1fr; text-align:center}}
+.jar{text-align:center}
+.jar select{font:600 13px/1 ui-sans-serif,sans-serif; padding:9px 10px; border:var(--rule);
+  background:var(--card); color:var(--ink); max-width:190px; width:100%; cursor:pointer}
+.jar select:focus{outline:none; box-shadow:3px 3px 0 var(--cobalt)}
+.jar .blob{width:64px; height:58px; margin:0 auto 12px; border:var(--rule);
+  border-radius:52% 48% 43% 57% / 56% 62% 38% 44%;
+  box-shadow:inset -4px -6px 11px rgba(0,0,0,.26), inset 4px 5px 9px rgba(255,255,255,.36)}
+</style>
+</head>
 <body>
 
-    <header>
-        <div class="bar">
-            <a class="logo" href="#">
-                <svg width="27" height="27" viewBox="0 0 32 32" aria-hidden="true">
+<header>
+  <div class="bar">
+    <a class="logo" href="#">
+      <svg width="27" height="27" viewBox="0 0 32 32" aria-hidden="true">
         <path d="M16 3C8.8 3 3 8.4 3 15c0 6.3 5.2 10.6 11.4 10.6 1.7 0 2.6-1 2.6-2.2 0-1.1-.8-1.6-.8-2.6 0-1.2 1-2.1 2.4-2.1h2.1c4 0 6.3-2.6 6.3-6.6C27 7.3 22.3 3 16 3z"
               fill="none" stroke="#16120e" stroke-width="2"/>
         <circle cx="9.5" cy="13" r="2.4" fill="#2545c4"/>
@@ -1716,279 +522,287 @@
         <circle cx="20.8" cy="12" r="2.4" fill="#f2b304"/>
         <circle cx="11.6" cy="19.3" r="2.4" fill="#2f8f45"/>
       </svg>
-                <span class="word">Art<i>Mentor</i></span>
-            </a>
-            <nav>
-                <button id="tab-pattern" aria-selected="true">Make a pattern</button>
-                <button id="tab-grid" aria-selected="false">Sketch grid</button>
-                <button id="tab-check" aria-selected="false">Check a mix</button>
-                <button id="tab-review" aria-selected="false">Review a painting</button>
-                <button id="tab-studio" aria-selected="false">My studio</button>
-            </nav>
-        </div>
-    </header>
+      <span class="word">Art<i>Mentor</i></span>
+    </a>
+    <nav>
+      <button id="tab-pattern" aria-selected="true">Make a pattern</button>
+      <button id="tab-grid" aria-selected="false">Sketch grid</button>
+      <button id="tab-check" aria-selected="false">Check a mix</button>
+      <button id="tab-review" aria-selected="false">Review a painting</button>
+      <button id="tab-studio" aria-selected="false">My studio</button>
+    </nav>
+  </div>
+</header>
 
-    <main>
+<main>
 
-        <!-- ══════════════════════════ PATTERN ══════════════════════════ -->
-        <section class="panel" id="panel-pattern">
-            <h1>Turn <span class="glyph glyph-a"><svg xmlns='http://www.w3.org/2000/svg' viewBox='1.2 1.2 27.6 26.2' aria-hidden='true'><path d='M16 3C8.8 3 3 8.4 3 15c0 6.3 5.2 10.6 11.4 10.6 1.7 0 2.6-1 2.6-2.2 0-1.1-.8-1.6-.8-2.6 0-1.2 1-2.1 2.4-2.1h2.1c4 0 6.3-2.6 6.3-6.6C27 7.3 22.3 3 16 3z' fill='none' stroke='currentColor' stroke-width='3.2'/><circle cx='9.3' cy='13.3' r='3.2' fill='#2545c4'/><circle cx='15.3' cy='8.7' r='3.2' fill='#e2512a'/><circle cx='21.2' cy='12' r='3.2' fill='#f2b304'/><circle cx='11.8' cy='19.8' r='3.2' fill='#2f8f45'/></svg></span>
-                <span
-                    class="sr">a</span> photo<span class="glyph glyph-g"><svg xmlns='http://www.w3.org/2000/svg' viewBox='-7 -1 60 80' aria-hidden='true'><g transform='rotate(27 23 40)'><rect x='13' y='2' width='20' height='30' rx='10' fill='currentColor'/><rect x='8' y='29' width='30' height='15' rx='3' fill='currentColor'/><path d='M9 44h28l-7.5 24c-2.4 7.6-10.6 7.6-13 0z' fill='#e2512a'/><path d='M14 36.5h18' stroke='#faf4e8' stroke-width='3.2' stroke-linecap='round'/></g></svg></span>
-                    <span
-                        class="sr">g</span>raph into something <em>paintable</em>.</h1>
-            <p class="lede">
-                Every colour gets a number, and every number gets a recipe — mixed from the paints already on your table.
-            </p>
+<!-- ══════════════════════════ PATTERN ══════════════════════════ -->
+<section class="panel" id="panel-pattern">
+  <h1>Turn a photograph into something <em>paintable</em>.</h1>
+  <p class="lede">
+    Every colour gets a number, and every number gets a recipe —
+    mixed from the paints already on your table.
+  </p>
 
-            <div class="split">
-                <div>
-                    <div class="sheet">
-                        <h2 class="sec"><span class="step">1</span> Your photograph</h2>
-                        <div class="drop" id="drop-p">
-                            <div class="ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><rect x="3" y="4"
+  <div class="split">
+    <div>
+      <div class="sheet">
+        <h2 class="sec"><span class="step">1</span> Your photograph</h2>
+        <div class="drop" id="drop-p">
+          <div class="ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><rect x="3" y="4"
           width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="M4 17l5-5 4 4 3-3 4 4"/></svg></div>
-                            <b>Drop an image here</b>
-                            <small>or click to browse</small>
-                        </div>
-                        <input type="file" id="file-p" accept="image/jpeg,image/png,image/webp">
+          <b>Drop an image here</b>
+          <small>or click to browse</small>
+        </div>
+        <input type="file" id="file-p" accept="image/jpeg,image/png,image/webp">
 
-                        <div class="knob">
-                            <div class="lab"><span>Colours</span><span class="val" id="v-colors">12</span></div>
-                            <input type="range" id="colors" min="4" max="24" value="12">
-                        </div>
-                        <div class="knob">
-                            <div class="lab"><span>Detail</span><span class="val" id="v-detail">medium</span></div>
-                            <input type="range" id="detail" min="0" max="2" value="1">
-                        </div>
+        <div class="knob">
+          <div class="lab"><span>Colours</span><span class="val" id="v-colors">12</span></div>
+          <input type="range" id="colors" min="4" max="24" value="12">
+        </div>
+        <div class="knob">
+          <div class="lab"><span>Detail</span><span class="val" id="v-detail">medium</span></div>
+          <input type="range" id="detail" min="0" max="2" value="1">
+        </div>
 
-                        <button class="brush" id="run-p" disabled>Make my pattern</button>
-                    </div>
+        <button class="brush" id="run-p" disabled>Make my pattern</button>
+      </div>
 
-                    <div class="sheet" style="margin-top:22px">
-                        <h2 class="sec"><span class="step">2</span> What you're painting with</h2>
-                        <div class="choices" id="mediums"></div>
-                        <div style="margin-top:17px" class="choices" id="levels"></div>
-                        <div class="guide" id="guide" hidden></div>
-                    </div>
+      <div class="sheet" style="margin-top:22px">
+        <h2 class="sec"><span class="step">2</span> What you're painting with</h2>
+        <div class="choices" id="mediums"></div>
+        <div style="margin-top:17px" class="choices" id="levels"></div>
+        <div class="guide" id="guide" hidden></div>
+      </div>
 
-                    <div class="sheet" style="margin-top:22px">
-                        <h2 class="sec"><span class="step">3</span> On your palette</h2>
-                        <div class="dabs" id="dabs"></div>
-                        <button class="ghost" id="all" style="margin-top:16px">Deselect all</button>
-                        <p class="aside">Tap a dab to put it away. Recipes only use what's left out.</p>
-                    </div>
-                </div>
+      <div class="sheet" style="margin-top:22px">
+        <h2 class="sec"><span class="step">3</span> On your palette</h2>
+        <div class="dabs" id="dabs"></div>
+        <button class="ghost" id="all" style="margin-top:16px">Deselect all</button>
+        <p class="aside">Tap a dab to put it away. Recipes only use what's left out.</p>
+      </div>
+    </div>
 
-                <div id="out-p">
-                    <div class="empty">
-                        <div class="frame">
-                            <svg width='64' height='64' viewBox='0 0 48 48' aria-hidden='true'><g fill='#f26b3a'><circle cx='37.50' cy='24.00' r='7.6'/><circle cx='30.75' cy='35.69' r='7.6'/><circle cx='17.25' cy='35.69' r='7.6'/><circle cx='10.50' cy='24.00' r='7.6'/><circle cx='17.25' cy='12.31' r='7.6'/><circle cx='30.75' cy='12.31' r='7.6'/></g><circle cx='24' cy='24' r='8' fill='#faf4e8'/></svg>
-                        </div>
-                        <p>Nothing on the easel yet.</p>
-                    </div>
-                </div>
-            </div>
+    <div id="out-p">
+      <div class="empty">
+        <div class="frame">
+          <svg width='64' height='64' viewBox='0 0 48 48' aria-hidden='true'><g fill='#f26b3a'><circle cx='37.50' cy='24.00' r='7.6'/><circle cx='30.75' cy='35.69' r='7.6'/><circle cx='17.25' cy='35.69' r='7.6'/><circle cx='10.50' cy='24.00' r='7.6'/><circle cx='17.25' cy='12.31' r='7.6'/><circle cx='30.75' cy='12.31' r='7.6'/></g><circle cx='24' cy='24' r='8' fill='#faf4e8'/></svg>
+        </div>
+        <p>Nothing on the easel yet.</p>
+      </div>
+    </div>
+  </div>
 
-            <!-- ─────────── mixing bench ─────────── -->
-            <div class="sheet bench">
-                <h2 class="sec">The mixing bench</h2>
-                <div class="inner">
-                    <div class="jar">
-                        <div class="blob" id="blob-a"></div>
-                        <select id="sel-a"></select>
-                    </div>
-                    <div class="mixres">
-                        <div class="pool" id="pool"></div>
-                        <div class="vs" id="ratio-txt">1 : 1</div>
-                        <input type="range" id="ratio" min="1" max="9" value="5" style="max-width:190px">
-                    </div>
-                    <div class="jar">
-                        <div class="blob" id="blob-b"></div>
-                        <select id="sel-b"></select>
-                    </div>
-                </div>
-                <div class="compare">
-                    <div>
-                        <div class="sq" id="sq-real"></div><small>real paint<br>(what you'd get)</small></div>
-                    <div>
-                        <div class="sq" id="sq-naive"></div><small>screen blending<br>(what most apps do)</small></div>
-                </div>
-                <p class="aside" style="text-align:center">
-                    Blue and yellow make green on a palette and grey on a screen. Drag the slider — the left square is pigment, the right is arithmetic.
-                </p>
-            </div>
-        </section>
+  <!-- ─────────── mixing bench ─────────── -->
+  <div class="sheet bench">
+    <h2 class="sec">The mixing bench</h2>
+    <div class="inner">
+      <div class="jar">
+        <div class="blob" id="blob-a"></div>
+        <select id="sel-a"></select>
+      </div>
+      <div class="mixres">
+        <div class="pool" id="pool"></div>
+        <div class="vs" id="ratio-txt">1 : 1</div>
+        <input type="range" id="ratio" min="1" max="9" value="5" style="max-width:190px">
+      </div>
+      <div class="jar">
+        <div class="blob" id="blob-b"></div>
+        <select id="sel-b"></select>
+      </div>
+    </div>
+    <div class="compare">
+      <div><div class="sq" id="sq-real"></div><small>real paint<br>(what you'd get)</small></div>
+      <div><div class="sq" id="sq-naive"></div><small>screen blending<br>(what most apps do)</small></div>
+    </div>
+    <p class="aside" style="text-align:center">
+      Blue and yellow make green on a palette and grey on a screen. Drag the slider —
+      the left square is pigment, the right is arithmetic.
+    </p>
+  </div>
+</section>
 
-        <!-- ══════════════════════════ CHECK ══════════════════════════ -->
-        <section class="panel" id="panel-check" hidden>
-            <h1>Mixed something. Is it <em>right</em>?</h1>
-            <p class="lede">
-                Photograph the paint and find out how close you got — and which way to push it.
-            </p>
+<!-- ══════════════════════════ CHECK ══════════════════════════ -->
+<section class="panel" id="panel-check" hidden>
+  <h1>Mixed something. Is it <em>right</em>?</h1>
+  <p class="lede">
+    Photograph the paint and find out how close you got — and which way to push it.
+  </p>
 
-            <div class="split">
-                <div class="sheet">
-                    <h2 class="sec"><span class="step">1</span> Photograph the paint</h2>
-                    <div class="drop" id="drop-c">
-                        <div class="ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M12 3C7 3 3 6.6 3 11
+  <div class="split">
+    <div class="sheet">
+      <h2 class="sec"><span class="step">1</span> Photograph the paint</h2>
+      <div class="drop" id="drop-c">
+        <div class="ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M12 3C7 3 3 6.6 3 11
           c0 4.3 3.6 7.2 7.8 7.2 1.2 0 1.8-.7 1.8-1.5 0-.8-.6-1.1-.6-1.8 0-.8.7-1.4 1.7-1.4h1.4
           c2.8 0 4.4-1.8 4.4-4.5C19.5 6 16.3 3 12 3z"/><circle cx="7.6" cy="10.2" r="1.1" fill="currentColor"
           stroke="none"/><circle cx="11.5" cy="7.6" r="1.1" fill="currentColor" stroke="none"/>
           <circle cx="15.4" cy="9.6" r="1.1" fill="currentColor" stroke="none"/></svg></div>
-                        <b>Drop your photo</b>
-                        <small>paint in the middle of the frame</small>
-                    </div>
-                    <input type="file" id="file-c" accept="image/jpeg,image/png,image/webp">
+        <b>Drop your photo</b>
+        <small>paint in the middle of the frame</small>
+      </div>
+      <input type="file" id="file-c" accept="image/jpeg,image/png,image/webp">
 
-                    <h2 class="sec" style="margin-top:26px"><span class="step">2</span> Aiming for</h2>
-                    <div style="display:flex; align-items:center; gap:12px">
-                        <div class="blob" id="blob-t" style="width:52px;height:48px;margin:0"></div>
-                        <input type="color" id="target" value="#4a7a3a" style="width:46px;height:38px;border:2px solid var(--ink);
+      <h2 class="sec" style="margin-top:26px"><span class="step">2</span> Aiming for</h2>
+      <div style="display:flex; align-items:center; gap:12px">
+        <div class="blob" id="blob-t" style="width:52px;height:48px;margin:0"></div>
+        <input type="color" id="target" value="#4a7a3a"
+               style="width:46px;height:38px;border:2px solid var(--ink);
                       background:none;cursor:pointer;padding:0">
-                        <input type="text" id="target-hex" value="#4a7a3a" spellcheck="false" style="font:600 14px ui-sans-serif,sans-serif;padding:9px 10px;
+        <input type="text" id="target-hex" value="#4a7a3a" spellcheck="false"
+               style="font:600 14px ui-sans-serif,sans-serif;padding:9px 10px;
                       border:2px solid var(--ink);width:112px;background:var(--card);color:var(--ink)">
-                    </div>
+      </div>
 
-                    <label style="display:flex;gap:9px;margin-top:20px;font-size:14px;cursor:pointer;align-items:flex-start">
+      <label style="display:flex;gap:9px;margin-top:20px;font-size:14px;cursor:pointer;align-items:flex-start">
         <input type="checkbox" id="has-card" checked
                style="accent-color:var(--vermilion);margin-top:3px;width:17px;height:17px">
         <span>The grey card is along the top of my photo</span>
       </label>
 
-                    <button class="brush" id="run-c" disabled>Read this colour</button>
+      <button class="brush" id="run-c" disabled>Read this colour</button>
 
-                    <p class="aside">
-                        Room light shifts colour more than the difference you're asking about, so without the card it's a guess. <a href="/calibration-card.svg" target="_blank">Print the card</a> — in greyscale, or it won't work.
-                    </p>
-                </div>
+      <p class="aside">
+        Room light shifts colour more than the difference you're asking about, so without the
+        card it's a guess. <a href="/calibration-card.svg" target="_blank">Print the card</a> —
+        in greyscale, or it won't work.
+      </p>
+    </div>
 
-                <div id="out-c">
-                    <div class="empty">
-                        <div class="frame">
-                            <svg width='64' height='64' viewBox='0 0 48 48' aria-hidden='true'><g fill='#f26b3a'><rect x='22' y='1' width='4' height='7' transform='rotate(0 24 24)'/><rect x='22' y='1' width='4' height='7' transform='rotate(45 24 24)'/><rect x='22' y='1' width='4' height='7' transform='rotate(90 24 24)'/><rect x='22' y='1' width='4' height='7' transform='rotate(135 24 24)'/><rect x='22' y='1' width='4' height='7' transform='rotate(180 24 24)'/><rect x='22' y='1' width='4' height='7' transform='rotate(225 24 24)'/><rect x='22' y='1' width='4' height='7' transform='rotate(270 24 24)'/><rect x='22' y='1' width='4' height='7' transform='rotate(315 24 24)'/><circle cx='24' cy='24' r='12'/></g></svg>
-                        </div>
-                        <p>No verdict yet.</p>
-                    </div>
-                </div>
-            </div>
-        </section>
+    <div id="out-c">
+      <div class="empty">
+        <div class="frame">
+          <svg width='64' height='64' viewBox='0 0 48 48' aria-hidden='true'><g fill='#f26b3a'><rect x='22' y='1' width='4' height='7' transform='rotate(0 24 24)'/><rect x='22' y='1' width='4' height='7' transform='rotate(45 24 24)'/><rect x='22' y='1' width='4' height='7' transform='rotate(90 24 24)'/><rect x='22' y='1' width='4' height='7' transform='rotate(135 24 24)'/><rect x='22' y='1' width='4' height='7' transform='rotate(180 24 24)'/><rect x='22' y='1' width='4' height='7' transform='rotate(225 24 24)'/><rect x='22' y='1' width='4' height='7' transform='rotate(270 24 24)'/><rect x='22' y='1' width='4' height='7' transform='rotate(315 24 24)'/><circle cx='24' cy='24' r='12'/></g></svg>
+        </div>
+        <p>No verdict yet.</p>
+      </div>
+    </div>
+  </div>
+</section>
 
-        <!-- ══════════════════════════ GRID ══════════════════════════ -->
-        <section class="panel" id="panel-grid" hidden>
-            <h1>Draw it <em>square by square</em>.</h1>
-            <p class="lede">
-                The oldest trick there is. Judging one small cell is far easier than judging a whole page, which is how most people first get proportions right.
-            </p>
+<!-- ══════════════════════════ GRID ══════════════════════════ -->
+<section class="panel" id="panel-grid" hidden>
+  <h1>Draw it <em>square by square</em>.</h1>
+  <p class="lede">
+    The oldest trick there is. Judging one small cell is far easier than judging
+    a whole page, which is how most people first get proportions right.
+  </p>
 
-            <div class="split">
-                <div class="sheet">
-                    <h2 class="sec"><span class="step">1</span> Your reference</h2>
-                    <div class="drop" id="drop-g">
-                        <div class="ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="3" y="3" width="18" height="18" rx="2"/>
+  <div class="split">
+    <div class="sheet">
+      <h2 class="sec"><span class="step">1</span> Your reference</h2>
+      <div class="drop" id="drop-g">
+        <div class="ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="1.3"><rect x="3" y="3" width="18" height="18" rx="2"/>
           <path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg></div>
-                        <b>Drop an image here</b>
-                        <small>or click to browse</small>
-                    </div>
-                    <input type="file" id="file-g" accept="image/jpeg,image/png,image/webp">
+        <b>Drop an image here</b>
+        <small>or click to browse</small>
+      </div>
+      <input type="file" id="file-g" accept="image/jpeg,image/png,image/webp">
 
-                    <div class="knob">
-                        <div class="lab"><span>Cells across</span><span class="val" id="v-div">6</span></div>
-                        <input type="range" id="divisions" min="3" max="16" value="6">
-                    </div>
+      <div class="knob">
+        <div class="lab"><span>Cells across</span><span class="val" id="v-div">6</span></div>
+        <input type="range" id="divisions" min="3" max="16" value="6">
+      </div>
 
-                    <label class="chk" style="margin-top:16px"><input type="checkbox" id="g-labels" checked>
+      <label class="chk" style="margin-top:16px"><input type="checkbox" id="g-labels" checked>
         <span>Letter and number the cells</span></label>
-                    <label class="chk" style="margin-top:9px"><input type="checkbox" id="g-diag">
+      <label class="chk" style="margin-top:9px"><input type="checkbox" id="g-diag">
         <span>Add diagonal guides</span></label>
 
-                    <button class="brush" id="run-g" disabled>Draw the grid</button>
-                    <p class="aside">Print it, then rule the same number of cells on your paper.</p>
-                </div>
+      <button class="brush" id="run-g" disabled>Draw the grid</button>
+      <p class="aside">Print it, then rule the same number of cells on your paper.</p>
+    </div>
 
-                <div id="out-g">
-                    <div class="empty">
-                        <div class="frame">
-                            <svg width='64' height='64' viewBox='0 0 48 48' aria-hidden='true'><g fill='#3a2bd4'><rect x='6' y='21' width='23' height='12' rx='1.5'/><rect x='24' y='11' width='9' height='13'/><path d='M24 8h16l2 7-18 2z'/><rect x='9' y='32' width='5' height='11' rx='1.5'/><rect x='21' y='32' width='5' height='11' rx='1.5'/><path d='M6 22a8 8 0 0 0-5 10l4 1a9 9 0 0 1 3-8z'/></g></svg>
-                        </div>
-                        <p>No grid drawn yet.</p>
-                    </div>
-                </div>
-            </div>
-        </section>
+    <div id="out-g">
+      <div class="empty">
+        <div class="frame">
+          <svg width='64' height='64' viewBox='0 0 48 48' aria-hidden='true'><g fill='#3a2bd4'><rect x='6' y='21' width='23' height='12' rx='1.5'/><rect x='24' y='11' width='9' height='13'/><path d='M24 8h16l2 7-18 2z'/><rect x='9' y='32' width='5' height='11' rx='1.5'/><rect x='21' y='32' width='5' height='11' rx='1.5'/><path d='M6 22a8 8 0 0 0-5 10l4 1a9 9 0 0 1 3-8z'/></g></svg>
+        </div>
+        <p>No grid drawn yet.</p>
+      </div>
+    </div>
+  </div>
+</section>
 
-        <!-- ══════════════════════════ REVIEW ══════════════════════════ -->
-        <section class="panel" id="panel-review" hidden>
-            <h1>How close did you <em>get</em>?</h1>
-            <p class="lede">
-                This measures how far your painting sits from the reference — colour, values, lightness. It does not judge whether the painting is any good; nothing can.
-            </p>
+<!-- ══════════════════════════ REVIEW ══════════════════════════ -->
+<section class="panel" id="panel-review" hidden>
+  <h1>How close did you <em>get</em>?</h1>
+  <p class="lede">
+    This measures how far your painting sits from the reference — colour, values,
+    lightness. It does not judge whether the painting is any good; nothing can.
+  </p>
 
-            <div class="split">
-                <div class="sheet">
-                    <h2 class="sec"><span class="step">1</span> Both pictures</h2>
-                    <div class="twoup">
-                        <div>
-                            <div class="drop" id="drop-r1" style="padding:20px 10px">
-                                <b style="font-size:14px">Reference</b>
-                                <small>what you copied</small>
-                            </div>
-                            <input type="file" id="file-r1" accept="image/jpeg,image/png,image/webp">
-                        </div>
-                        <div>
-                            <div class="drop" id="drop-r2" style="padding:20px 10px">
-                                <b style="font-size:14px">Your painting</b>
-                                <small>photographed flat</small>
-                            </div>
-                            <input type="file" id="file-r2" accept="image/jpeg,image/png,image/webp">
-                        </div>
-                    </div>
+  <div class="split">
+    <div class="sheet">
+      <h2 class="sec"><span class="step">1</span> Both pictures</h2>
+      <div class="twoup">
+        <div>
+          <div class="drop" id="drop-r1" style="padding:20px 10px">
+            <b style="font-size:14px">Reference</b>
+            <small>what you copied</small>
+          </div>
+          <input type="file" id="file-r1" accept="image/jpeg,image/png,image/webp">
+        </div>
+        <div>
+          <div class="drop" id="drop-r2" style="padding:20px 10px">
+            <b style="font-size:14px">Your painting</b>
+            <small>photographed flat</small>
+          </div>
+          <input type="file" id="file-r2" accept="image/jpeg,image/png,image/webp">
+        </div>
+      </div>
 
-                    <button class="brush" id="run-r" disabled>Review it</button>
-                    <p class="aside">
-                        Shoot your painting square-on and cropped to the edges — it is compared directly, with no perspective correction.
-                    </p>
-                </div>
+      <button class="brush" id="run-r" disabled>Review it</button>
+      <p class="aside">
+        Shoot your painting square-on and cropped to the edges — it is compared
+        directly, with no perspective correction.
+      </p>
+    </div>
 
-                <div id="out-r">
-                    <div class="empty">
-                        <div class="frame">
-                            <svg width='64' height='64' viewBox='0 0 48 48' aria-hidden='true'><g fill='#2bb3a3'><circle cx='20' cy='28' r='12'/><circle cx='34' cy='15' r='7.5'/><path d='M40 11l8 4-8 4z'/><rect x='15' y='39' width='3.5' height='8' rx='1.7'/><rect x='24' y='39' width='3.5' height='8' rx='1.7'/></g><circle cx='36' cy='13' r='2.2' fill='#faf4e8'/></svg>
-                        </div>
-                        <p>Nothing to review yet.</p>
-                    </div>
-                </div>
-            </div>
-        </section>
+    <div id="out-r">
+      <div class="empty">
+        <div class="frame">
+          <svg width='64' height='64' viewBox='0 0 48 48' aria-hidden='true'><g fill='#2bb3a3'><circle cx='20' cy='28' r='12'/><circle cx='34' cy='15' r='7.5'/><path d='M40 11l8 4-8 4z'/><rect x='15' y='39' width='3.5' height='8' rx='1.7'/><rect x='24' y='39' width='3.5' height='8' rx='1.7'/></g><circle cx='36' cy='13' r='2.2' fill='#faf4e8'/></svg>
+        </div>
+        <p>Nothing to review yet.</p>
+      </div>
+    </div>
+  </div>
+</section>
 
 
-        <!-- ══════════════════════════ STUDIO ══════════════════════════ -->
-        <section class="panel" id="panel-studio" hidden>
+<!-- ══════════════════════════ STUDIO ══════════════════════════ -->
+<section class="panel" id="panel-studio" hidden>
 
-            <div id="studio-list">
-                <h1>Everything you have <em>painted</em>.</h1>
-                <p class="lede">
-                    Keep the reference, photograph the work as it goes, and watch the numbers move. It is saved on this machine and goes nowhere else.
-                </p>
+  <div id="studio-list">
+    <h1>Everything you have <em>painted</em>.</h1>
+    <p class="lede">
+      Keep the reference, photograph the work as it goes, and watch the numbers
+      move. It is saved on this machine and goes nowhere else.
+    </p>
 
-                <div class="split">
-                    <div class="sheet">
-                        <h2 class="sec"><span class="step">1</span> Start a piece</h2>
-                        <div class="drop" id="drop-s">
-                            <div class="ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><rect x="3" y="4"
+    <div class="split">
+      <div class="sheet">
+        <h2 class="sec"><span class="step">1</span> Start a piece</h2>
+        <div class="drop" id="drop-s">
+          <div class="ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><rect x="3" y="4"
           width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="M4 17l5-5 4 4 3-3 4 4"/></svg></div>
-                            <b>The reference</b>
-                            <small>what you are painting from</small>
-                        </div>
-                        <input type="file" id="file-s" accept="image/jpeg,image/png,image/webp">
+          <b>The reference</b>
+          <small>what you are painting from</small>
+        </div>
+        <input type="file" id="file-s" accept="image/jpeg,image/png,image/webp">
 
-                        <div class="field">
-                            <label for="s-title">Call it</label>
-                            <input type="text" id="s-title" placeholder="Harbour at dusk" maxlength="120">
-                        </div>
-                        <div class="field">
-                            <label for="s-medium">Painting in</label>
-                            <select id="s-medium">
+        <div class="field">
+          <label for="s-title">Call it</label>
+          <input type="text" id="s-title" placeholder="Harbour at dusk" maxlength="120">
+        </div>
+        <div class="field">
+          <label for="s-medium">Painting in</label>
+          <select id="s-medium">
             <option value="">not sure yet</option>
             <option value="acrylic">acrylic</option>
             <option value="oil">oil</option>
@@ -1997,177 +811,119 @@
             <option value="pencil">pencil</option>
             <option value="crayon">crayon</option>
           </select>
-                        </div>
+        </div>
 
-                        <button class="brush" id="run-s" disabled>Keep this piece</button>
-                        <p class="aside">
-                            Photographs are stripped of their location data before they are saved.
-                        </p>
-                    </div>
+        <button class="brush" id="run-s" disabled>Keep this piece</button>
+        <p class="aside">
+          Photographs are stripped of their location data before they are saved.
+        </p>
+      </div>
 
-                    <div id="out-s">
-                        <div class="empty">
-                            <div class="frame">
-                                <svg width='64' height='64' viewBox='0 0 48 48' aria-hidden='true'><g fill='#3a2bd4'><path d='M11 13l1-11 10 7zM37 13l-1-11-10 7z'/><circle cx='24' cy='16' r='12'/><path d='M13 27h22l4 17H9z'/><path d='M39 32a11 11 0 0 1 8 12h-6a6 6 0 0 0-4-7z'/></g><circle cx='19' cy='15' r='2.1' fill='#faf4e8'/><circle cx='29' cy='15' r='2.1' fill='#faf4e8'/></svg>
-                            </div>
-                            <p>An empty wall. Start a piece and it will hang here.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
+      <div id="out-s">
+        <div class="empty">
+          <div class="frame">
+            <svg width='64' height='64' viewBox='0 0 48 48' aria-hidden='true'><g fill='#3a2bd4'><path d='M11 13l1-11 10 7zM37 13l-1-11-10 7z'/><circle cx='24' cy='16' r='12'/><path d='M13 27h22l4 17H9z'/><path d='M39 32a11 11 0 0 1 8 12h-6a6 6 0 0 0-4-7z'/></g><circle cx='19' cy='15' r='2.1' fill='#faf4e8'/><circle cx='29' cy='15' r='2.1' fill='#faf4e8'/></svg>
+          </div>
+          <p>An empty wall. Start a piece and it will hang here.</p>
+        </div>
+      </div>
+    </div>
+  </div>
 
-            <div id="studio-piece" hidden></div>
-        </section>
+  <div id="studio-piece" hidden></div>
+</section>
 
-    </main>
+</main>
 
-    <script>
-        const $ = id => document.getElementById(id);
-        const esc = t => String(t ? ? '').replace(/[&<>"]/g, c =>
-            ({
-                '&': '&amp;',
-                '<': '&lt;',
-                '>': '&gt;',
-                '"': '&quot;'
-            }[c]));
-        const DETAIL = [{
-            t: 'coarse',
-            a: 220
-        }, {
-            t: 'medium',
-            a: 90
-        }, {
-            t: 'fine',
-            a: 35
-        }];
-        let fileP = null,
-            fileC = null,
-            paints = [],
-            svgCache = {
-                outline: null,
-                filled: null
-            };
-        let medium = 'acrylic',
-            level = 'improving';
+<script>
+const $ = id => document.getElementById(id);
+const esc = t => String(t ?? '').replace(/[&<>"]/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const DETAIL = [{t:'coarse',a:220},{t:'medium',a:90},{t:'fine',a:35}];
+let fileP=null, fileC=null, paints=[], svgCache={outline:null,filled:null};
+let medium='acrylic', level='improving';
 
-        /* ───────── tabs ───────── */
-        const TABS = ['pattern', 'grid', 'check', 'review', 'studio'];
-        const show = n => TABS.forEach(t => {
-            $('panel-' + t).hidden = t !== n;
-            $('tab-' + t).setAttribute('aria-selected', t === n);
-        });
-        TABS.forEach(t => $('tab-' + t).onclick = () => {
-            show(t);
-            if (t === 'studio') wall();
-        });
+/* ───────── tabs ───────── */
+const TABS = ['pattern','grid','check','review','studio'];
+const show = n => TABS.forEach(t=>{
+  $('panel-'+t).hidden = t!==n;
+  $('tab-'+t).setAttribute('aria-selected', t===n);
+});
+TABS.forEach(t=>$('tab-'+t).onclick = ()=>{ show(t); if(t==='studio') wall(); });
 
-        /* ───────── file pickers ───────── */
-        const ICON0 = new Map();
+/* ───────── file pickers ───────── */
+const ICON0 = new Map();
+function dropzone(dropId, inputId, done){
+  const d=$(dropId), i=$(inputId);
+  // Stash the resting icon the first time, so a zone that has been used can be
+  // put back exactly as it started rather than keeping its green tick forever.
+  const ic0 = d.querySelector('.ic');
+  if(ic0 && !ICON0.has(dropId)) ICON0.set(dropId, ic0.innerHTML);
+  d.onclick=()=>i.click();
+  i.onchange=()=>i.files[0]&&done(i.files[0],d);
+  ['dragenter','dragover'].forEach(e=>d.addEventListener(e,ev=>{ev.preventDefault();d.classList.add('over')}));
+  ['dragleave','drop'].forEach(e=>d.addEventListener(e,ev=>{ev.preventDefault();d.classList.remove('over')}));
+  d.addEventListener('drop',ev=>{const f=ev.dataTransfer.files[0]; if(f) done(f,d);});
+}
+const marked=(f,d)=>{
+  d.classList.add('has');
+  // The compact review drop zones carry no icon, so this has to tolerate its
+  // absence — without the guard the whole handler threw and the submit button
+  // silently never enabled.
+  const ic = d.querySelector('.ic');
+  if (ic) ic.innerHTML='<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4a7a3a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.5 5.5L20 6"/></svg>';
+  d.querySelector('b').textContent=f.name;
+  d.querySelector('small').textContent=(f.size/1048576).toFixed(1)+' MB — click to swap';
+};
+dropzone('drop-p','file-p',(f,d)=>{fileP=f; marked(f,d); $('run-p').disabled=false;});
+dropzone('drop-c','file-c',(f,d)=>{fileC=f; marked(f,d); $('run-c').disabled=false;});
 
-        function dropzone(dropId, inputId, done) {
-            const d = $(dropId),
-                i = $(inputId);
-            // Stash the resting icon the first time, so a zone that has been used can be
-            // put back exactly as it started rather than keeping its green tick forever.
-            const ic0 = d.querySelector('.ic');
-            if (ic0 && !ICON0.has(dropId)) ICON0.set(dropId, ic0.innerHTML);
-            d.onclick = () => i.click();
-            i.onchange = () => i.files[0] && done(i.files[0], d);
-            ['dragenter', 'dragover'].forEach(e => d.addEventListener(e, ev => {
-                ev.preventDefault();
-                d.classList.add('over')
-            }));
-            ['dragleave', 'drop'].forEach(e => d.addEventListener(e, ev => {
-                ev.preventDefault();
-                d.classList.remove('over')
-            }));
-            d.addEventListener('drop', ev => {
-                const f = ev.dataTransfer.files[0];
-                if (f) done(f, d);
-            });
-        }
-        const marked = (f, d) => {
-            d.classList.add('has');
-            // The compact review drop zones carry no icon, so this has to tolerate its
-            // absence — without the guard the whole handler threw and the submit button
-            // silently never enabled.
-            const ic = d.querySelector('.ic');
-            if (ic) ic.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4a7a3a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.5 5.5L20 6"/></svg>';
-            d.querySelector('b').textContent = f.name;
-            d.querySelector('small').textContent = (f.size / 1048576).toFixed(1) + ' MB — click to swap';
-        };
-        dropzone('drop-p', 'file-p', (f, d) => {
-            fileP = f;
-            marked(f, d);
-            $('run-p').disabled = false;
-        });
-        dropzone('drop-c', 'file-c', (f, d) => {
-            fileC = f;
-            marked(f, d);
-            $('run-c').disabled = false;
-        });
+/* ───────── knobs ───────── */
+$('colors').oninput = e=>$('v-colors').textContent=e.target.value;
+$('detail').oninput = e=>$('v-detail').textContent=DETAIL[e.target.value].t;
+const syncTarget = hex => { $('blob-t').style.background=hex; };
+$('target').oninput = e=>{ $('target-hex').value=e.target.value; syncTarget(e.target.value); };
+$('target-hex').oninput = e=>{
+  if(/^#[0-9a-fA-F]{6}$/.test(e.target.value)){ $('target').value=e.target.value; syncTarget(e.target.value); }
+};
+syncTarget('#4a7a3a');
 
-        /* ───────── knobs ───────── */
-        $('colors').oninput = e => $('v-colors').textContent = e.target.value;
-        $('detail').oninput = e => $('v-detail').textContent = DETAIL[e.target.value].t;
-        const syncTarget = hex => {
-            $('blob-t').style.background = hex;
-        };
-        $('target').oninput = e => {
-            $('target-hex').value = e.target.value;
-            syncTarget(e.target.value);
-        };
-        $('target-hex').oninput = e => {
-            if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) {
-                $('target').value = e.target.value;
-                syncTarget(e.target.value);
-            }
-        };
-        syncTarget('#4a7a3a');
+/* ───────── medium and skill level ─────────
+   Chips rather than a <select>, because this choice changes what the app
+   does — which paints are even allowed in a recipe, how many colours the
+   pattern has — and a decision with consequences should be visible on the
+   page rather than folded into a dropdown. */
+const CHIPC = ['var(--cobalt)','var(--vermilion)','var(--teal)','var(--sap)',
+               'var(--violet)','var(--rose)'];
 
-        /* ───────── medium and skill level ─────────
-           Chips rather than a <select>, because this choice changes what the app
-           does — which paints are even allowed in a recipe, how many colours the
-           pattern has — and a decision with consequences should be visible on the
-           page rather than folded into a dropdown. */
-        const CHIPC = ['var(--cobalt)', 'var(--vermilion)', 'var(--teal)', 'var(--sap)',
-            'var(--violet)', 'var(--rose)'
-        ];
-
-        function chipRow(holder, items, current, onPick) {
-            $(holder).innerHTML = items.map((it, i) => `
+function chipRow(holder, items, current, onPick){
+  $(holder).innerHTML = items.map((it,i)=>`
     <button class="choice" data-id="${it.id}" aria-pressed="${it.id===current}"
             style="--c:${CHIPC[i % CHIPC.length]}">${esc(it.name)}</button>`).join('');
-            $(holder).querySelectorAll('.choice').forEach(b => b.onclick = () => {
-                $(holder).querySelectorAll('.choice').forEach(o => o.setAttribute('aria-pressed', o === b));
-                onPick(b.dataset.id);
-            });
-        }
+  $(holder).querySelectorAll('.choice').forEach(b=>b.onclick=()=>{
+    $(holder).querySelectorAll('.choice').forEach(o=>o.setAttribute('aria-pressed', o===b));
+    onPick(b.dataset.id);
+  });
+}
 
-        Promise.all([
-            fetch('/mediums').then(r => r.json()),
-            fetch('/levels').then(r => r.json()),
-        ]).then(([ms, ls]) => {
-            chipRow('mediums', ms, medium, id => {
-                medium = id;
-                refreshGuide();
-            });
-            chipRow('levels', ls, level, id => {
-                level = id;
-                refreshGuide();
-            });
-            refreshGuide();
-        }).catch(() => { /* the defaults still work; the server will apply them */ });
+Promise.all([
+  fetch('/mediums').then(r=>r.json()),
+  fetch('/levels').then(r=>r.json()),
+]).then(([ms, ls])=>{
+  chipRow('mediums', ms, medium, id=>{ medium=id; refreshGuide(); });
+  chipRow('levels', ls, level, id=>{ level=id; refreshGuide(); });
+  refreshGuide();
+}).catch(()=>{ /* the defaults still work; the server will apply them */ });
 
-        async function refreshGuide() {
-            try {
-                const g = await (await fetch(`/guidance?medium=${medium}&level=${level}`)).json();
-                // Move the slider to what suits this medium, so the number on screen is
-                // the number the server would have picked anyway.
-                $('colors').value = g.colors;
-                $('v-colors').textContent = g.colors;
-                $('guide').hidden = false;
-                $('guide').innerHTML = `<b>What changes</b><ul>${
+async function refreshGuide(){
+  try{
+    const g = await (await fetch(`/guidance?medium=${medium}&level=${level}`)).json();
+    // Move the slider to what suits this medium, so the number on screen is
+    // the number the server would have picked anyway.
+    $('colors').value = g.colors;
+    $('v-colors').textContent = g.colors;
+    $('guide').hidden = false;
+    $('guide').innerHTML = `<b>What changes</b><ul>${
       g.notes.map(n=>`<li>${esc(n)}</li>`).join('')}</ul>`;
   }catch{ $('guide').hidden = true; }
 }
@@ -2716,7 +1472,6 @@ function ink(hex){
   return (0.299*(n>>16&255)+0.587*(n>>8&255)+0.114*(n&255))>150 ? '#241f1a' : '#fff8f0';
 }
 const cap = s => s.charAt(0).toUpperCase()+s.slice(1);
-    </script>
+</script>
 </body>
-
 </html>
