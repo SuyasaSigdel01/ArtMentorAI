@@ -673,3 +673,26 @@ class TestMediumAndLevel:
         )
         assert response.status_code == 400
         assert "watercolour" in response.json()["detail"].lower()
+
+
+class TestCaching:
+    def test_the_page_is_never_cached(self):
+        """A cached index.html makes every edit look like it silently reverted.
+
+        This cost a long debugging session once: the file on disk was correct,
+        the server was serving the new page, and the browser kept showing the
+        old one. Asserted here so nobody "optimises" the header back.
+        """
+        response = client.get("/")
+        assert response.status_code == 200
+        assert "no-store" in response.headers["cache-control"]
+
+    def test_gallery_images_are_cached_hard(self, gallery):
+        """The opposite case, and for the opposite reason.
+
+        An image is addressed by the hash of its own bytes, so its content can
+        never change. It is safe to cache forever and wasteful not to.
+        """
+        piece = new_piece()
+        headers = client.get(piece["image_url"]).headers
+        assert "immutable" in headers["cache-control"]
