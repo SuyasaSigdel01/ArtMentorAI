@@ -1,0 +1,17 @@
+# Line endings are normalised to LF in the repository, whatever the machine.
+#
+# Without this, a file saved on Windows comes back as a whole-file change on
+# Linux or macOS and the real edit is invisible in the diff. That is merely
+# annoying with one developer and genuinely obstructive with two.
+* text=auto eol=lf
+
+# Formats that must never be line-ending converted.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.db  binary
+*.xlsx binary
+
+# SVG is text, and the pattern renderer's output should diff as text.
+*.svg text eol=lf
