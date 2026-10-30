@@ -55,6 +55,7 @@ from ..core.paints import STARTER_ACRYLICS, catalog_by_id
 from ..core.pipeline import PIPELINE_VERSION, PatternParams, generate_pattern
 from ..core.recipes import recipes_for_pattern
 from ..core.render.calibration import render_calibration_card_svg
+from ..core.render.loomis import render_loomis_sheet_svg
 from ..core.render.grid import render_grid_svg
 from ..core.render.svg import render_pattern_svg
 from ..core.swatch import check_shade
@@ -342,6 +343,16 @@ def index() -> FileResponse:
 def calibration_card() -> Response:
     """The printable grey reference card, generated on request."""
     svg, _ = render_calibration_card_svg()
+    return Response(
+        content=svg,
+        media_type="image/svg+xml",
+        headers={"Content-Disposition": 'inline; filename="artmentor-calibration-card.svg"'},
+    )
+
+@app.get("/loomis-sheet.svg", include_in_schema=False)
+def loomis_sheet() -> Response:
+    """The printable grey reference card, generated on request."""
+    svg= render_loomis_sheet_svg()
     return Response(
         content=svg,
         media_type="image/svg+xml",
