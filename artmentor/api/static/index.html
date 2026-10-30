@@ -691,7 +691,8 @@ input[type=range]{width:100%; margin-top:10px; accent-color:var(--vermilion); cu
   </p>
 
   <div class="split">
-    <div class="sheet">
+    <div>
+      <div class="sheet">
       <h2 class="sec"><span class="step">1</span> Your reference</h2>
       <div class="drop" id="drop-g">
         <div class="ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none"
@@ -714,6 +715,23 @@ input[type=range]{width:100%; margin-top:10px; accent-color:var(--vermilion); cu
 
       <button class="brush" id="run-g" disabled>Draw the grid</button>
       <p class="aside">Print it, then rule the same number of cells on your paper.</p>
+      </div>
+
+      <div class="sheet" style="margin-top:22px">
+        <h2 class="sec">Drawing a head?</h2>
+        <p style="margin-top:0">
+          The grid works on anything. A face is the one subject with a better
+          method: build the skull as a ball, slice the cheeks flat, and the
+          features land where they should.
+        </p>
+        <button class="brush" id="run-l">Show the head sheet</button>
+        <p class="aside">
+          Ten angles on one page, to print and copy. These are the commonly
+          taught proportions rather than measurements from Loomis's book —
+          the sources disagree, so we say which we used.
+        </p>
+      </div>
+
     </div>
 
     <div id="out-g">
@@ -1179,6 +1197,33 @@ $('run-g').onclick = async ()=>{
     $('dlg').download='grid.svg';
   }catch(e){ $('out-g').innerHTML=`<div class="err">${e.message}</div>`; }
   finally{ btn.disabled=false; btn.textContent='Draw the grid'; }
+};
+
+/* ───────── the head sheet ─────────
+   Static: the server draws the same ten angles every time, so this only has
+   to fetch it and put it on screen. Sliders for the angle can come later —
+   the route already takes them. */
+$('run-l').onclick = async ()=>{
+  const btn=$('run-l'); btn.disabled=true; btn.innerHTML='<span class="load"></span>Drawing…';
+  try{
+    const res=await fetch('/loomis-sheet.svg');
+    if(!res.ok) throw new Error('Could not load the head sheet.');
+    const svg=await res.text();
+    $('out-g').innerHTML=`
+      <div class="canvas fade">
+        <div class="toolbar">
+          <a class="ghost" id="dll" style="margin-left:auto;text-decoration:none">Download SVG</a>
+        </div>
+        <div class="mat">${svg}</div>
+        <p class="aside" style="text-align:center">
+          Start with the ball and the cross on it. Everything else hangs off
+          which way that cross is facing.
+        </p>
+      </div>`;
+    $('dll').href=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));
+    $('dll').download='loomis-heads.svg';
+  }catch(e){ $('out-g').innerHTML=`<div class="err">${e.message}</div>`; }
+  finally{ btn.disabled=false; btn.textContent='Show the head sheet'; }
 };
 
 /* ───────── review a painting ───────── */

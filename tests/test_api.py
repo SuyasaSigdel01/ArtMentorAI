@@ -696,3 +696,20 @@ class TestCaching:
         piece = new_piece()
         headers = client.get(piece["image_url"]).headers
         assert "immutable" in headers["cache-control"]
+
+
+class TestLoomisSheet:
+    def test_the_head_sheet_is_served(self):
+        """Checks only status and type, so the route can be written any way."""
+        response = client.get("/loomis-sheet.svg")
+        assert response.status_code == 200
+        assert response.headers["content-type"].startswith("image/svg+xml")
+
+    def test_it_is_a_real_svg_with_several_heads(self):
+        body = client.get("/loomis-sheet.svg").text
+        assert body.lstrip().startswith("<?xml")
+        assert body.count("turn") >= 8
+
+    def test_it_says_the_proportions_are_a_convention(self):
+        """The honesty travels with the sheet, not just with the code."""
+        assert "not measured from the book" in client.get("/loomis-sheet.svg").text
