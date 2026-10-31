@@ -713,3 +713,84 @@ class TestLoomisSheet:
     def test_it_says_the_proportions_are_a_convention(self):
         """The honesty travels with the sheet, not just with the code."""
         assert "not measured from the book" in client.get("/loomis-sheet.svg").text
+
+
+class TestAdvancement:
+    def attempt(self, piece_id, scale):
+        """One saved attempt at a given brightness, to move colour accuracy."""
+        import numpy as np
+        from PIL import Image
+
+        arr = np.asarray(Image.open(io.BytesIO(scene(240, 240))), dtype=np.float64)
+        shot = encode(Image.fromarray(np.clip(arr * scale, 0, 255).astype("uint8")))
+        return client.post(
+            f"/gallery/pieces/{piece_id}/attempts",
+            files={"image": ("a.png", shot, "image/png")},
+        )
+
+    def test_one_attempt_asks_for_more_before_judging(self, gallery):
+        """A single good photograph under good light must not promote anyone."""
+        piece = new_piece()
+        self.attempt(piece["id"], 1.0)
+        body = client.get(f"/gallery/pieces/{piece['id']}/progress").json()
+        assert body["advance"]["suggested"] is False
+        assert "more attempt" in body["advance"]["message"]
+
+    def test_a_run_of_close_attempts_suggests_moving_up(self, gallery):
+        piece = new_piece()
+        for _ in range(3):
+            self.attempt(piece["id"], 1.0)
+        body = client.get(
+            f"/gallery/pieces/{piece['id']}/progress", params={"level": "beginner"}
+        ).json()
+        assert body["advance"]["suggested"] is True
+        assert body["advance"]["next_level"] == "improving"
+
+    def test_attempts_far_from_the_reference_do_not(self, gallery):
+        piece = new_piece()
+        for _ in range(3):
+            self.attempt(piece["id"], 0.35)
+        body = client.get(
+            f"/gallery/pieces/{piece['id']}/progress", params={"level": "confident"}
+        ).json()
+        assert body["advance"]["suggested"] is False
+
+    def test_the_top_of_the_ladder_has_nowhere_to_go(self, gallery):
+        piece = new_piece()
+        for _ in range(3):
+            self.attempt(piece["id"], 1.0)
+        body = client.get(
+            f"/gallery/pieces/{piece['id']}/progress", params={"level": "confident"}
+        ).json()
+        assert body["advance"]["next_level"] is None
+        assert body["advance"]["suggested"] is False
+
+    def test_the_level_is_a_request_parameter_not_a_property_of_the_piece(self, gallery):
+        """A skill level belongs to the painter, so two levels read differently."""
+        piece = new_piece()
+        for _ in range(3):
+            self.attempt(piece["id"], 0.75)
+        easy = client.get(
+            f"/gallery/pieces/{piece['id']}/progress", params={"level": "beginner"}
+        ).json()["advance"]
+        hard = client.get(
+            f"/gallery/pieces/{piece['id']}/progress", params={"level": "confident"}
+        ).json()["advance"]
+        assert easy["target_delta_e"] > hard["target_delta_e"]
+
+    def test_an_unknown_level_is_a_400(self, gallery):
+        piece = new_piece()
+        self.attempt(piece["id"], 1.0)
+        response = client.get(
+            f"/gallery/pieces/{piece['id']}/progress", params={"level": "wizard"}
+        )
+        assert response.status_code == 400
+
+    def test_it_never_claims_the_painting_is_good(self, gallery):
+        piece = new_piece()
+        for _ in range(3):
+            self.attempt(piece["id"], 1.0)
+        text = client.get(
+            f"/gallery/pieces/{piece['id']}/progress", params={"level": "beginner"}
+        ).json()["advance"]["message"].lower()
+        assert not any(w in text for w in ("talented", "beautiful", "gifted", "score"))

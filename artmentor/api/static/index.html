@@ -1392,7 +1392,8 @@ async function openPiece(id){
     piece = await api('/gallery/pieces/' + id);
     // Only ask for progress once there is something to compare; the endpoint
     // refuses an empty piece rather than inventing a zero.
-    if(piece.attempts.length) prog = await api(`/gallery/pieces/${id}/progress`);
+    if(piece.attempts.length) prog = await api(
+      `/gallery/pieces/${id}/progress?level=${level}`);
   }catch(e){ alertish(e.message); return; }
 
   $('studio-list').hidden = true;
@@ -1457,8 +1458,21 @@ async function openPiece(id){
       </div>
 
       <div>
+        ${prog && prog.advance ? `
+          <div class="sheet fade" style="${prog.advance.suggested
+            ? 'border-left:9px solid var(--sap)' : ''}">
+            <h2 class="sec">Ready to move up?</h2>
+            <p style="margin:0;color:${prog.advance.suggested
+              ? 'var(--ink)' : 'var(--ink-2)'}">${esc(prog.advance.message)}</p>
+            <p class="aside">
+              Measured on colour accuracy across your last few attempts, against the
+              mark for ${esc(prog.advance.level)}. It is a suggestion — nothing changes
+              unless you change it.
+            </p>
+          </div>` : ''}
+
         ${prog && prog.trends.length ? `
-          <div class="sheet fade">
+          <div class="sheet fade" style="margin-top:20px">
             <h2 class="sec">Since your first attempt</h2>
             <p style="margin:0;color:var(--ink-2)">${esc(prog.summary)}</p>
             <ul class="trends">${prog.trends.map(trendRow).join('')}</ul>
@@ -1468,8 +1482,8 @@ async function openPiece(id){
             </p>
           </div>` : ''}
 
-        <div class="sheet ${prog && prog.trends.length ? '' : 'fade'}"
-             style="margin-top:${prog && prog.trends.length ? '20px' : '0'}">
+        <div class="sheet ${(prog && (prog.trends.length || prog.advance)) ? '' : 'fade'}"
+             style="margin-top:${(prog && (prog.trends.length || prog.advance)) ? '20px' : '0'}">
           <h2 class="sec">Every sitting</h2>
           ${piece.attempts.length
             ? `<ul class="shots">${shots}</ul>`

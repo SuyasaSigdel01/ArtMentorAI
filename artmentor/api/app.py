@@ -50,13 +50,22 @@ from ..core.imaging.loader import (
     encode_image,
     load_image,
 )
-from ..core.mediums import LEVELS, MEDIUMS, describe_mix, describe_value, guidance_for
+from ..core.mediums import (
+    LEVELS,
+    MEDIUMS,
+    describe_mix,
+    describe_value,
+    get_level,
+    guidance_for,
+    next_level,
+    should_advance,
+)
 from ..core.paints import STARTER_ACRYLICS, catalog_by_id
 from ..core.pipeline import PIPELINE_VERSION, PatternParams, generate_pattern
 from ..core.recipes import recipes_for_pattern
 from ..core.render.calibration import render_calibration_card_svg
-from ..core.render.loomis import render_loomis_sheet_svg
 from ..core.render.grid import render_grid_svg
+from ..core.render.loomis import render_loomis_sheet_svg
 from ..core.render.svg import render_pattern_svg
 from ..core.swatch import check_shade
 from ..core.types import RGBColor
@@ -226,6 +235,20 @@ class TrendOut(BaseModel):
     description: str
 
 
+class AdvanceOut(BaseModel):
+    """Whether this painter looks ready for the next skill level.
+
+    A suggestion, never a promotion. Nothing in the product acts on it.
+    """
+
+    suggested: bool
+    level: str
+    next_level: str | None
+    target_delta_e: float
+    attempts_counted: int = Field(description="How many attempts the judgement used")
+    message: str
+
+
 class ProgressOut(BaseModel):
     piece_id: str
     attempts: int
@@ -233,6 +256,7 @@ class ProgressOut(BaseModel):
     latest_at: str
     summary: str
     trends: list[TrendOut]
+    advance: AdvanceOut | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -349,14 +373,15 @@ def calibration_card() -> Response:
         headers={"Content-Disposition": 'inline; filename="artmentor-calibration-card.svg"'},
     )
 
+
 @app.get("/loomis-sheet.svg", include_in_schema=False)
 def loomis_sheet() -> Response:
-    """The printable grey reference card, generated on request."""
-    svg= render_loomis_sheet_svg()
+    """The printable sheet of Loomis heads, generated on request."""
+    svg = render_loomis_sheet_svg()
     return Response(
         content=svg,
         media_type="image/svg+xml",
-        headers={"Content-Disposition": 'inline; filename="artmentor-calibration-card.svg"'},
+        headers={"Content-Disposition": 'inline; filename="artmentor-loomis-sheet.svg"'},
     )
 
 
@@ -719,6 +744,56 @@ def _piece_out(piece: Piece) -> PieceOut:
     )
 
 
+#: How many recent attempts the advancement judgement looks at.
+_ADVANCE_WINDOW = 3
+
+
+def _advance_out(level, attempts) -> AdvanceOut:
+    """Turn a run of attempts into a suggestion about moving up.
+
+    Only `colour_accuracy` is used, because it is the measure with a single
+    unambiguous direction — lower is closer. Value structure is a correlation
+    and the two biases are signed, so none of them reduce to one number that
+    `should_advance` could compare against a target.
+    """
+    scores = [a.value("colour_accuracy") for a in attempts]
+    usable = [s for s in scores if s is not None]
+    onwards = next_level(level)
+    suggested = should_advance(level, usable, needed=_ADVANCE_WINDOW)
+
+    if onwards is None:
+        message = "You are at the top of the ladder here. Keep going."
+    elif suggested:
+        # `level.next_step` is what moving up from *here* asks of them. The next
+        # level's own next_step describes moving beyond that, which is a step
+        # too far and was what this printed at first.
+        message = (
+            f"Your last {_ADVANCE_WINDOW} attempts came within "
+            f"{level.target_delta_e:g} of the reference. Time to move up — "
+            f"{level.next_step}"
+        )
+    elif len(usable) < _ADVANCE_WINDOW:
+        remaining = _ADVANCE_WINDOW - len(usable)
+        message = (
+            f"Save {remaining} more attempt{'s' if remaining != 1 else ''} and this will "
+            f"say whether you are ready to move up."
+        )
+    else:
+        message = (
+            f"Still working toward {level.target_delta_e:g} on colour. "
+            "That is the mark for this level."
+        )
+
+    return AdvanceOut(
+        suggested=suggested,
+        level=level.id,
+        next_level=onwards.id if onwards else None,
+        target_delta_e=level.target_delta_e,
+        attempts_counted=min(len(usable), _ADVANCE_WINDOW),
+        message=message,
+    )
+
+
 def _progress_out(progress: Progress) -> ProgressOut:
     return ProgressOut(
         piece_id=progress.piece_id,
@@ -866,17 +941,34 @@ def remove_attempt(store: Store, attempt_id: str) -> Response:
 
 
 @app.get("/gallery/pieces/{piece_id}/progress", response_model=ProgressOut)
-def piece_progress(store: Store, piece_id: str) -> ProgressOut:
+def piece_progress(
+    store: Store,
+    piece_id: str,
+    level: Annotated[str, Query(description="beginner, improving, confident")] = "improving",
+) -> ProgressOut:
     """Latest attempt against the first one — the "am I improving?" answer.
 
     Still fidelity, not merit. The trends say the painting moved closer to its
     reference, which is a fact about two photographs, and the wording is kept
     free of praise for the same reason the critique is.
+
+    `level` is a query parameter rather than something stored on the piece,
+    because a skill level belongs to the painter and not to one painting. It
+    will move onto a user record when accounts exist.
     """
     try:
-        return _progress_out(store.progress(piece_id))
+        piece = store.get_piece(piece_id)
+        out = _progress_out(store.progress(piece_id))
     except GalleryError as exc:
         raise _gallery_error(exc) from exc
+
+    try:
+        current = get_level(level)
+    except KeyError as exc:
+        raise HTTPException(status_code=400, detail=str(exc).strip("'")) from exc
+
+    out.advance = _advance_out(current, piece.attempts)
+    return out
 
 
 @app.get("/gallery/images/{digest}", include_in_schema=False)
