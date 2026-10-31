@@ -473,6 +473,31 @@ input[type=range]{width:100%; margin-top:10px; accent-color:var(--vermilion); cu
 .trends .further{background:var(--vermilion); color:#fffcf5}
 .trends .flat{background:var(--paper-2); color:var(--ink-2)}
 
+/* ───────────────────────────── camera ─────────────────────────────
+   Three of the flows are "photograph the thing in front of you" — a mix on
+   the palette, the painting so far, the reference. Making someone save a
+   file first and then find it again is friction in exactly the moment they
+   are holding a wet brush. */
+.shoot{display:flex; gap:8px; margin-top:10px; align-items:center}
+.shoot .ghost{flex:1; display:flex; align-items:center; justify-content:center; gap:7px}
+.shoot svg{display:block}
+.cam{position:fixed; inset:0; z-index:100; background:rgba(22,18,14,.92);
+  display:grid; place-items:center; padding:16px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px))}
+.cam[hidden]{display:none}
+.cam .box{background:var(--card); border:var(--rule); box-shadow:var(--pop);
+  max-width:620px; width:100%; padding:18px}
+.cam h3{font:700 17px/1.2 ui-sans-serif,sans-serif; margin:0 0 14px}
+.cam .stage{background:#0c0a08; border:var(--rule); aspect-ratio:4/3;
+  display:grid; place-items:center; overflow:hidden; position:relative}
+.cam video,.cam canvas{width:100%; height:100%; object-fit:cover; display:block}
+.cam .msg{color:#e8dfd0; font-size:14.5px; text-align:center; padding:24px; max-width:40ch}
+.cam .row{display:flex; gap:9px; margin-top:14px; flex-wrap:wrap}
+.cam .row .brush{margin-top:0; flex:1; min-width:150px}
+.cam .row .ghost{flex:none}
+@media (max-width:460px){.cam .row .brush{min-width:0}}
+
 /* ───────────────────────────── states ───────────────────────────── */
 .err{background:#ffeee8; border:var(--rule); border-left:9px solid var(--vermilion);
   color:#8e2d0b; padding:14px 16px; font-size:14.5px}
@@ -851,6 +876,22 @@ input[type=range]{width:100%; margin-top:10px; accent-color:var(--vermilion); cu
   <div id="studio-piece" hidden></div>
 </section>
 
+<div class="cam" id="cam" hidden role="dialog" aria-modal="true" aria-label="Take a photo">
+  <div class="box">
+    <h3 id="cam-title">Take a photo</h3>
+    <div class="stage" id="cam-stage">
+      <video id="cam-video" playsinline muted hidden></video>
+      <canvas id="cam-canvas" hidden></canvas>
+      <div class="msg" id="cam-msg">Starting the camera…</div>
+    </div>
+    <div class="row">
+      <button class="brush" id="cam-shoot" disabled>Take the photo</button>
+      <button class="ghost" id="cam-again" hidden>Retake</button>
+      <button class="ghost" id="cam-close">Cancel</button>
+    </div>
+  </div>
+</div>
+
 </main>
 
 <script>
@@ -868,6 +909,129 @@ const show = n => TABS.forEach(t=>{
   $('tab-'+t).setAttribute('aria-selected', t===n);
 });
 TABS.forEach(t=>$('tab-'+t).onclick = ()=>{ show(t); if(t==='studio') wall(); });
+
+/* ───────── the camera ─────────
+   getUserMedia needs a secure context: https, or localhost, which is how
+   this runs in development. Where it is unavailable — an older browser, or
+   the page served over plain http from another machine — the button falls
+   back to a file input carrying `capture`, which opens the camera app
+   directly on a phone and the ordinary picker everywhere else. Either way
+   the result is a File handed to the same callback a dropped file uses, so
+   nothing downstream needs to know where the picture came from. */
+let camStream = null, camDone = null;
+
+function stopCamera(){
+  if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream = null; }
+}
+
+function closeCamera(){
+  stopCamera();
+  $('cam').hidden = true;
+  $('cam-video').hidden = true;
+  $('cam-canvas').hidden = true;
+  $('cam-again').hidden = true;
+  camDone = null;
+}
+
+async function openCamera(title, done){
+  camDone = done;
+  $('cam-title').textContent = title;
+  $('cam').hidden = false;
+  $('cam-msg').hidden = false;
+  $('cam-msg').textContent = 'Starting the camera…';
+  $('cam-shoot').disabled = true;
+  try{
+    // Prefer the rear camera: on a phone this is the one pointed at the work.
+    camStream = await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:{ideal:'environment'}, width:{ideal:1920}, height:{ideal:1440}},
+      audio:false,
+    });
+    const v = $('cam-video');
+    v.srcObject = camStream;
+    await v.play();
+    v.hidden = false; $('cam-msg').hidden = true; $('cam-shoot').disabled = false;
+  }catch(err){
+    // Naming the cause matters: "denied" and "no camera" need different fixes.
+    const why = err && err.name === 'NotAllowedError'
+      ? 'The browser blocked the camera. Allow it for this site, or use Choose a file.'
+      : err && err.name === 'NotFoundError'
+      ? 'No camera found on this device. Use Choose a file instead.'
+      : 'The camera could not be started here. Use Choose a file instead.';
+    $('cam-msg').textContent = why;
+    $('cam-shoot').disabled = true;
+  }
+}
+
+$('cam-close').onclick = closeCamera;
+$('cam').addEventListener('click', e=>{ if(e.target === $('cam')) closeCamera(); });
+document.addEventListener('keydown', e=>{ if(e.key === 'Escape' && !$('cam').hidden) closeCamera(); });
+
+$('cam-shoot').onclick = ()=>{
+  const v = $('cam-video'), c = $('cam-canvas');
+  c.width = v.videoWidth; c.height = v.videoHeight;
+  c.getContext('2d').drawImage(v, 0, 0);
+  // Freeze on the still so the shot can be judged before it is accepted.
+  stopCamera();
+  v.hidden = true; c.hidden = false;
+  $('cam-again').hidden = false;
+  $('cam-shoot').textContent = 'Use this photo';
+  $('cam-shoot').onclick = ()=>{
+    c.toBlob(blob=>{
+      const file = new File([blob], `photo-${Date.now()}.jpg`, {type:'image/jpeg'});
+      const done = camDone;
+      closeCamera();
+      $('cam-shoot').textContent = 'Take the photo';
+      $('cam-shoot').onclick = shootAgain;
+      if(done) done(file);
+    }, 'image/jpeg', 0.92);
+  };
+};
+const shootAgain = $('cam-shoot').onclick;
+
+$('cam-again').onclick = ()=>{
+  const title = $('cam-title').textContent;
+  $('cam-shoot').textContent = 'Take the photo';
+  $('cam-shoot').onclick = shootAgain;
+  openCamera(title, camDone);
+};
+
+const CAMERA_OK = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+
+/* Adds "Choose a file" / "Take a photo" under a drop zone. The drop zone
+   itself keeps working exactly as before — this is a second way in, not a
+   replacement. */
+function addCamera(dropId, inputId, label, done){
+  const drop = $(dropId), input = $(inputId);
+  const row = document.createElement('div');
+  row.className = 'shoot';
+  row.innerHTML = `
+    <button type="button" class="ghost" data-pick>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2" stroke-linecap="round"><path d="M4 20h16M12 4v11M7 10l5 5 5-5"/></svg>
+      Choose a file</button>
+    <button type="button" class="ghost" data-shoot>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2" stroke-linecap="round"><path d="M3 8h4l2-3h6l2 3h4v12H3z"/>
+        <circle cx="12" cy="13" r="3.4"/></svg>
+      Take a photo</button>`;
+  drop.insertAdjacentElement('afterend', row);
+  row.querySelector('[data-pick]').onclick = ()=>input.click();
+
+  const shoot = row.querySelector('[data-shoot]');
+  if(CAMERA_OK){
+    shoot.onclick = ()=>openCamera(label, f=>done(f, drop));
+  }else{
+    // No getUserMedia: a capture input still opens the camera app on a phone.
+    const fallback = document.createElement('input');
+    fallback.type = 'file';
+    fallback.accept = 'image/jpeg,image/png,image/webp';
+    fallback.setAttribute('capture', 'environment');
+    fallback.style.display = 'none';
+    fallback.onchange = ()=>fallback.files[0] && done(fallback.files[0], drop);
+    row.appendChild(fallback);
+    shoot.onclick = ()=>fallback.click();
+  }
+}
 
 /* ───────── file pickers ───────── */
 const ICON0 = new Map();
@@ -893,8 +1057,12 @@ const marked=(f,d)=>{
   d.querySelector('b').textContent=f.name;
   d.querySelector('small').textContent=(f.size/1048576).toFixed(1)+' MB — click to swap';
 };
-dropzone('drop-p','file-p',(f,d)=>{fileP=f; marked(f,d); $('run-p').disabled=false;});
-dropzone('drop-c','file-c',(f,d)=>{fileC=f; marked(f,d); $('run-c').disabled=false;});
+const tookP=(f,d)=>{fileP=f; marked(f,d||$('drop-p')); $('run-p').disabled=false;};
+dropzone('drop-p','file-p',tookP);
+addCamera('drop-p','file-p','Photograph your subject',tookP);
+const tookC=(f,d)=>{fileC=f; marked(f,d||$('drop-c')); $('run-c').disabled=false;};
+dropzone('drop-c','file-c',tookC);
+addCamera('drop-c','file-c','Photograph the mixed paint',tookC);
 
 /* ───────── knobs ───────── */
 $('colors').oninput = e=>$('v-colors').textContent=e.target.value;
@@ -1166,7 +1334,9 @@ function verdict(d){
 
 /* ───────── sketch grid ───────── */
 let fileG=null;
-dropzone('drop-g','file-g',(f,d)=>{fileG=f; marked(f,d); $('run-g').disabled=false;});
+const tookG=(f,d)=>{fileG=f; marked(f,d||$('drop-g')); $('run-g').disabled=false;};
+dropzone('drop-g','file-g',tookG);
+addCamera('drop-g','file-g','Photograph your reference',tookG);
 $('divisions').oninput = e=>$('v-div').textContent=e.target.value;
 
 $('run-g').onclick = async ()=>{
@@ -1229,8 +1399,12 @@ $('run-l').onclick = async ()=>{
 /* ───────── review a painting ───────── */
 let fileR1=null, fileR2=null;
 const readyR = ()=>{ $('run-r').disabled = !(fileR1 && fileR2); };
-dropzone('drop-r1','file-r1',(f,d)=>{fileR1=f; marked(f,d); readyR();});
-dropzone('drop-r2','file-r2',(f,d)=>{fileR2=f; marked(f,d); readyR();});
+const tookR1=(f,d)=>{fileR1=f; marked(f,d||$('drop-r1')); readyR();};
+const tookR2=(f,d)=>{fileR2=f; marked(f,d||$('drop-r2')); readyR();};
+dropzone('drop-r1','file-r1',tookR1);
+dropzone('drop-r2','file-r2',tookR2);
+addCamera('drop-r1','file-r1','Photograph the reference',tookR1);
+addCamera('drop-r2','file-r2','Photograph your painting',tookR2);
 
 const NICE = {colour_accuracy:'Colour', value_structure:'Values',
               lightness_bias:'Lightness', chroma_bias:'Saturation'};
@@ -1320,11 +1494,13 @@ const alertish = msg => {
 };
 
 const readyS = () => { $('run-s').disabled = !(fileS && $('s-title').value.trim()); };
-dropzone('drop-s','file-s',(f,d)=>{
-  fileS = f; marked(f,d);
+const tookS = (f, d) => {
+  fileS = f; marked(f, d || $('drop-s'));
   if(!$('s-title').value) $('s-title').value = niceName(f.name);
   readyS();
-});
+};
+dropzone('drop-s','file-s',tookS);
+addCamera('drop-s','file-s','Photograph your reference',tookS);
 $('s-title').oninput = readyS;
 
 $('run-s').onclick = async () => {
@@ -1513,7 +1689,9 @@ async function openPiece(id){
   }));
 
   let fileA = null;
-  dropzone('drop-a','file-a',(f,d)=>{ fileA = f; marked(f,d); $('run-a').disabled = false; });
+  const tookA = (f, d) => { fileA = f; marked(f, d || $('drop-a')); $('run-a').disabled = false; };
+  dropzone('drop-a','file-a',tookA);
+  addCamera('drop-a','file-a','Photograph your painting',tookA);
   $('run-a').onclick = async () => {
     const btn = $('run-a');
     btn.disabled = true; btn.innerHTML = '<span class="load"></span>Comparing…';
