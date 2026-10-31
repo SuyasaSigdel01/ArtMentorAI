@@ -40,13 +40,15 @@ from __future__ import annotations
 import json
 import os
 import threading
+import time
+from collections import OrderedDict, deque
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi import Path as PathParam
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response
 from pydantic import BaseModel, Field
 
 from ..core.color.mixing import predict_mix_color
@@ -313,6 +315,80 @@ def _heavy_slot():
         yield
     finally:
         _heavy.release()
+
+
+# ---------------------------------------------------------------------------
+# Rate limiting
+# ---------------------------------------------------------------------------
+#: Requests allowed per client per window. Generous on purpose: opening the
+#: gallery fetches a thumbnail per tile, and a legitimate user browsing must
+#: never see a 429.
+_RATE_LIMIT = _env_int("ARTMENTOR_RATE_LIMIT", 240, 1, 100_000)
+_RATE_WINDOW = _env_int("ARTMENTOR_RATE_WINDOW", 60, 1, 3600)
+
+#: How many clients to remember. Without a cap, the thing protecting us from
+#: a flood becomes the thing that runs us out of memory during one: an
+#: attacker varying their source address would grow this dictionary forever.
+_RATE_CLIENTS = _env_int("ARTMENTOR_RATE_CLIENTS", 4096, 16, 1_000_000)
+
+#: Whether to believe X-Forwarded-For. Off by default, and that default is
+#: load-bearing: a header the client sets is a header the client can lie
+#: about, so trusting it unconditionally makes the limiter bypassable by
+#: anyone who reads this file. Turn it on only behind a proxy that overwrites
+#: the header rather than appending to it.
+_TRUST_PROXY = os.environ.get("ARTMENTOR_TRUST_PROXY", "").lower() in {"1", "true", "yes"}
+
+_rate_lock = threading.Lock()
+_rate_seen: OrderedDict[str, deque[float]] = OrderedDict()
+
+
+def _client_key(request: Request) -> str:
+    if _TRUST_PROXY:
+        forwarded = request.headers.get("x-forwarded-for", "")
+        if forwarded:
+            # The left-most entry is the original client; the rest are proxies.
+            return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def _over_rate_limit(key: str, now: float | None = None) -> bool:
+    """Sliding window per client. Returns True when this request is one too many."""
+    now = time.monotonic() if now is None else now
+    cutoff = now - _RATE_WINDOW
+    with _rate_lock:
+        hits = _rate_seen.get(key)
+        if hits is None:
+            hits = deque()
+            _rate_seen[key] = hits
+        while hits and hits[0] <= cutoff:
+            hits.popleft()
+        if len(hits) >= _RATE_LIMIT:
+            _rate_seen.move_to_end(key)
+            return True
+        hits.append(now)
+        _rate_seen.move_to_end(key)
+        while len(_rate_seen) > _RATE_CLIENTS:
+            _rate_seen.popitem(last=False)   # evict the least recently seen
+    return False
+
+
+@app.middleware("http")
+async def rate_limit(request: Request, call_next):
+    """Cap how often one client may ask for anything.
+
+    In-process and per-worker, which is honest rather than ideal: run four
+    workers and a client gets four times this allowance. A reverse proxy is
+    the right place for real limits in production. This exists so that a
+    single machine running a single process is not trivially floored, which
+    is exactly how this will first be deployed.
+    """
+    if _over_rate_limit(_client_key(request)):
+        return JSONResponse(
+            status_code=429,
+            content={"detail": "Too many requests. Slow down and try again shortly."},
+            headers={"Retry-After": str(_RATE_WINDOW)},
+        )
+    return await call_next(request)
 
 
 # ---------------------------------------------------------------------------

@@ -258,6 +258,14 @@ client cannot submit a slow job and come back for it. Celery or RQ remain the
 right answer under sustained load; what exists today only means a busy server
 sheds the slow routes instead of going silent on every route at once.
 
+**Rate limiting is in-process.** A sliding window per client, 429 with a
+`Retry-After`, a bounded client table so the defence cannot itself be used to
+exhaust memory, and `X-Forwarded-For` ignored unless `ARTMENTOR_TRUST_PROXY`
+says otherwise — a header the client sets is a header the client can lie about.
+It is per worker and resets on restart, so four workers means four times the
+allowance. Real limits belong at the reverse proxy; this is here so a single
+process is not trivially floored, which is how this will first be deployed.
+
 **Critique assumes alignment.** The attempt is scaled to the reference's
 dimensions and compared directly, which holds for a photograph taken square-on
 and cropped to the artwork. Perspective correction via feature matching would

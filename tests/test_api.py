@@ -25,6 +25,22 @@ from artmentor.store import Gallery
 client = TestClient(app)
 
 
+@pytest.fixture(autouse=True)
+def fresh_rate_limit():
+    """Give every test its own rate-limit budget.
+
+    TestClient reports the same host for all of them, so without this the
+    suite's own traffic accumulates and a test starts failing because of how
+    many tests ran before it. That is the worst kind of flake: it moves when
+    you add a test somewhere else entirely.
+    """
+    import artmentor.api.app as module
+
+    module._rate_seen.clear()
+    yield
+    module._rate_seen.clear()
+
+
 @pytest.fixture
 def gallery(tmp_path):
     """A gallery of its own for each test, injected in place of the real one.
@@ -888,3 +904,78 @@ class TestBackpressure:
         if raw is not None:
             monkeypatch.setenv("ARTMENTOR_MAX_CONCURRENT", raw)
         assert module._env_int("ARTMENTOR_MAX_CONCURRENT", 4, 1, 64) == expected
+
+
+class TestRateLimiting:
+    """One client must not be able to floor the service on its own.
+
+    Backpressure caps total concurrent work; this caps how often any single
+    caller may ask. They solve different halves of the same problem.
+    """
+
+    def test_a_normal_burst_is_allowed(self):
+        for _ in range(20):
+            assert client.get("/health").status_code == 200
+
+    def test_going_over_the_limit_is_refused_with_a_retry_after(self):
+        import artmentor.api.app as module
+
+        for _ in range(module._RATE_LIMIT):
+            client.get("/health")
+        response = client.get("/health")
+        assert response.status_code == 429
+        assert response.headers["retry-after"] == str(module._RATE_WINDOW)
+        assert "too many" in response.json()["detail"].lower()
+
+    def test_the_window_slides(self, monkeypatch):
+        """Old requests expire; a client blocked a minute ago is not blocked forever."""
+        import artmentor.api.app as module
+
+        now = 1_000.0
+        for _ in range(module._RATE_LIMIT):
+            assert module._over_rate_limit("a", now) is False
+        assert module._over_rate_limit("a", now) is True
+        assert module._over_rate_limit("a", now + module._RATE_WINDOW + 1) is False
+
+    def test_clients_are_counted_separately(self):
+        import artmentor.api.app as module
+
+        now = 1_000.0
+        for _ in range(module._RATE_LIMIT):
+            module._over_rate_limit("noisy", now)
+        assert module._over_rate_limit("noisy", now) is True
+        assert module._over_rate_limit("quiet", now) is False
+
+    def test_the_tracker_cannot_grow_without_bound(self, monkeypatch):
+        """Otherwise the defence against a flood is itself the way to exhaust us."""
+        import artmentor.api.app as module
+
+        monkeypatch.setattr(module, "_RATE_CLIENTS", 32)
+        module._rate_seen.clear()
+        for i in range(500):
+            module._over_rate_limit(f"ip-{i}", 1_000.0)
+        assert len(module._rate_seen) <= 32
+
+    def test_a_forwarded_header_is_ignored_by_default(self):
+        """A header the client sets is a header the client can lie about.
+
+        Trusting it unconditionally would let anyone reset their own limit by
+        inventing an address, which is worse than having no limiter at all
+        because it looks like protection.
+        """
+        import artmentor.api.app as module
+
+        assert module._TRUST_PROXY is False
+        for _ in range(module._RATE_LIMIT):
+            client.get("/health")
+        blocked = client.get("/health", headers={"X-Forwarded-For": "9.9.9.9"})
+        assert blocked.status_code == 429
+
+    def test_it_can_be_told_to_trust_a_proxy(self, monkeypatch):
+        import artmentor.api.app as module
+
+        monkeypatch.setattr(module, "_TRUST_PROXY", True)
+        for _ in range(module._RATE_LIMIT):
+            client.get("/health", headers={"X-Forwarded-For": "1.1.1.1"})
+        assert client.get("/health", headers={"X-Forwarded-For": "1.1.1.1"}).status_code == 429
+        assert client.get("/health", headers={"X-Forwarded-For": "2.2.2.2"}).status_code == 200
