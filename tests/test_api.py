@@ -794,3 +794,97 @@ class TestAdvancement:
             f"/gallery/pieces/{piece['id']}/progress", params={"level": "beginner"}
         ).json()["advance"]["message"].lower()
         assert not any(w in text for w in ("talented", "beautiful", "gifted", "score"))
+
+
+class TestBackpressure:
+    """The expensive routes run behind a bounded queue.
+
+    This is not a job queue and does not pretend to be one. What it buys is a
+    better failure mode under load: the slow routes shed requests while the
+    rest of the service keeps answering, instead of every thread being eaten
+    and the whole server going quiet.
+    """
+
+    def fill_every_slot(self):
+        import artmentor.api.app as module
+
+        return [module._heavy.acquire() for _ in range(module._MAX_CONCURRENT)]
+
+    def release(self, held):
+        import artmentor.api.app as module
+
+        for _ in held:
+            module._heavy.release()
+
+    def test_a_busy_server_refuses_instead_of_hanging(self, monkeypatch):
+        import artmentor.api.app as module
+
+        monkeypatch.setattr(module, "_QUEUE_TIMEOUT", 0.05)
+        held = self.fill_every_slot()
+        try:
+            response = client.post(
+                "/patterns",
+                files={"image": ("scene.png", scene(), "image/png")},
+                params={"colors": 4, "max_dimension": 240},
+            )
+            assert response.status_code == 503
+            assert response.headers["retry-after"]
+            assert "busy" in response.json()["detail"].lower()
+        finally:
+            self.release(held)
+
+    def test_the_cheap_routes_keep_answering_while_it_is_busy(self, monkeypatch):
+        """The whole point. A loaded server must still say it is alive."""
+        import artmentor.api.app as module
+
+        monkeypatch.setattr(module, "_QUEUE_TIMEOUT", 0.05)
+        held = self.fill_every_slot()
+        try:
+            assert client.get("/health").status_code == 200
+            assert client.get("/paints").status_code == 200
+            assert client.get("/guidance").status_code == 200
+        finally:
+            self.release(held)
+
+    def test_a_route_that_fails_still_gives_its_slot_back(self):
+        """A leaked slot would be invisible until the server answered nothing.
+
+        Rejecting a bad upload happens inside the slot, so if the release were
+        not in a `finally` every bad request would permanently cost capacity.
+        """
+        import artmentor.api.app as module
+
+        for _ in range(module._MAX_CONCURRENT + 2):
+            response = client.post(
+                "/patterns",
+                files={"image": ("x.png", b"not an image at all, but long", "image/png")},
+                params={"colors": 4},
+            )
+            assert response.status_code == 400
+
+        held = [module._heavy.acquire(timeout=0.1) for _ in range(module._MAX_CONCURRENT)]
+        try:
+            assert all(held), "slots were leaked by the failing requests"
+        finally:
+            self.release([h for h in held if h])
+
+    def test_no_more_than_the_limit_run_at_once(self):
+        import artmentor.api.app as module
+
+        held = self.fill_every_slot()
+        try:
+            assert module._heavy.acquire(timeout=0.05) is False
+        finally:
+            self.release(held)
+
+    @pytest.mark.parametrize(
+        "raw,expected", [("8", 8), ("0", 1), ("9999", 64), ("banana", 4), (None, 4)]
+    )
+    def test_the_knobs_clamp_nonsense(self, monkeypatch, raw, expected):
+        """An operator typo must not switch the limiter off."""
+        import artmentor.api.app as module
+
+        monkeypatch.delenv("ARTMENTOR_MAX_CONCURRENT", raising=False)
+        if raw is not None:
+            monkeypatch.setenv("ARTMENTOR_MAX_CONCURRENT", raw)
+        assert module._env_int("ARTMENTOR_MAX_CONCURRENT", 4, 1, 64) == expected

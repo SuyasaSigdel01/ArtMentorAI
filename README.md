@@ -246,11 +246,17 @@ calibration card exist to fix it: photograph real swatches under controlled
 light and `to_catalog_entry()` emits a replacement entry. It is an afternoon
 with paint, not a coding task.
 
-**No job queue.** Routes are declared `def`, so Starlette runs them in a worker
-thread and the event loop keeps serving. That is enough for development and
-light use and is *not* enough for production — there is no timeout, no memory
-ceiling and no backpressure, so a flood of large images will exhaust the pool.
-Celery or RQ before any public deployment.
+**Still no job queue.** The expensive routes now sit behind a bounded queue —
+`ARTMENTOR_MAX_CONCURRENT` of them run at once, and a request that cannot get a
+slot within `ARTMENTOR_QUEUE_TIMEOUT` seconds is refused with 503 and a
+`Retry-After`. Measured with the limit at 2: twelve concurrent pattern requests
+gave two completions and ten refusals, while `/health` answered 62 times with a
+worst case of 163ms.
+
+That is backpressure, not a queue. Work still dies with its request, and a
+client cannot submit a slow job and come back for it. Celery or RQ remain the
+right answer under sustained load; what exists today only means a busy server
+sheds the slow routes instead of going silent on every route at once.
 
 **Critique assumes alignment.** The attempt is scaled to the reference's
 dimensions and compared directly, which holds for a photograph taken square-on

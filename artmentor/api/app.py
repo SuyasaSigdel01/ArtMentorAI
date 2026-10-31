@@ -20,19 +20,27 @@ the security boundary and does the real validation — magic bytes, pixel caps,
 EXIF stripping — but it can only do that once the bytes are in memory, so the
 cap here stops a large body from being buffered in the first place.
 
-**Work runs in FastAPI's threadpool, not a job queue.** Endpoints are declared
-`def` rather than `async def`, so Starlette runs them in a worker thread and the
-event loop keeps serving. That is enough for development and light use, and it
-is *not* enough for production: there is no timeout, no memory ceiling, and no
-backpressure, so a flood of large images will exhaust the pool. The architecture
-notes call for Celery or RQ before any public deployment. Treat this module as
-correct but not yet hardened for load.
+**Work runs in FastAPI's threadpool, with a bounded queue in front of it.**
+Endpoints are declared `def` rather than `async def`, so Starlette runs them in
+a worker thread and the event loop keeps serving. The expensive routes take a
+slot from `_heavy_slot()` first: only `ARTMENTOR_MAX_CONCURRENT` of them run at
+once, and a request that cannot get a slot within `ARTMENTOR_QUEUE_TIMEOUT`
+seconds is refused with 503 and a `Retry-After`.
+
+That is real backpressure and it is not a job queue. Under sustained load the
+right answer is still Celery or RQ, where work outlives the request and a
+client polls for it. What this does is turn the failure mode from "the whole
+service stops answering, including /health" into "the slow routes shed load
+while everything else keeps working" — which is the difference between a
+service that is busy and one that is down.
 """
 
 from __future__ import annotations
 
 import json
 import os
+import threading
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -260,6 +268,54 @@ class ProgressOut(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Backpressure
+# ---------------------------------------------------------------------------
+def _env_int(name: str, default: int, low: int, high: int) -> int:
+    """Read a tuning knob from the environment, refusing nonsense."""
+    try:
+        value = int(os.environ.get(name, default))
+    except ValueError:
+        return default
+    return max(low, min(high, value))
+
+
+#: How many expensive requests may run at once. Starlette's own threadpool is
+#: larger than this on purpose: the remaining threads stay free for /health,
+#: /paints and the gallery listing, so a busy server still answers.
+_MAX_CONCURRENT = _env_int("ARTMENTOR_MAX_CONCURRENT", 4, 1, 64)
+
+#: How long a request will wait for a slot before being turned away. Long
+#: enough to ride out a burst, short enough that a client is not left hanging.
+_QUEUE_TIMEOUT = _env_int("ARTMENTOR_QUEUE_TIMEOUT", 20, 1, 300)
+
+_heavy = threading.BoundedSemaphore(_MAX_CONCURRENT)
+
+
+@contextmanager
+def _heavy_slot():
+    """Hold one of the limited slots for the duration of a request.
+
+    Refusing quickly is kinder than accepting work that will never finish: a
+    503 with Retry-After tells a client exactly what to do, where a request
+    queued behind forty others just times out somewhere less informative.
+
+    The release is in a `finally` so a route that raises still gives its slot
+    back. Getting that wrong leaks slots until the server answers nothing at
+    all, and it would only show up under the load this exists to survive.
+    """
+    if not _heavy.acquire(timeout=_QUEUE_TIMEOUT):
+        raise HTTPException(
+            status_code=503,
+            detail="The server is busy with other images. Try again in a moment.",
+            headers={"Retry-After": "10"},
+        )
+    try:
+        yield
+    finally:
+        _heavy.release()
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 def _read_upload(upload: UploadFile) -> bytes:
@@ -435,60 +491,61 @@ def create_pattern(
     """
     guide = _resolve_guidance(medium, level)
     data = _read_upload(image)
-    loaded = _decode(data, max_dimension)
+    with _heavy_slot():
+        loaded = _decode(data, max_dimension)
 
-    pattern = generate_pattern(
-        loaded.rgb,
-        PatternParams(
-            n_colors=colors if colors is not None else guide.colors,
-            max_dimension=max_dimension,
-            min_region_area=(
-                min_region_area if min_region_area is not None else guide.min_region_area
-            ),
-            monochrome=guide.medium.monochrome,
-        ),
-    )
-
-    recipes = None
-    # A graphite pattern has nothing to mix. Running the palette solver anyway
-    # would spend five seconds producing pigment names that mean nothing with a
-    # pencil in your hand.
-    if include_recipes and not guide.medium.monochrome:
-        palette = [
-            paint
-            for paint in _resolve_palette(paints)
-            if paint.id not in guide.excluded_paint_ids
-        ]
-        if not palette:
-            raise HTTPException(
-                status_code=400,
-                detail=f"No paints left once {guide.medium.name.lower()} rules are applied.",
-            )
-        recipes = recipes_for_pattern(
-            pattern,
-            palette,
-            max_components=(
-                max_components if max_components is not None else guide.max_components
+        pattern = generate_pattern(
+            loaded.rgb,
+            PatternParams(
+                n_colors=colors if colors is not None else guide.colors,
+                max_dimension=max_dimension,
+                min_region_area=(
+                    min_region_area if min_region_area is not None else guide.min_region_area
+                ),
+                monochrome=guide.medium.monochrome,
             ),
         )
 
-    palette: list[PaletteColorOut] = []
-    for index, entry in enumerate(pattern.palette):
-        item = PaletteColorOut(number=entry.number, hex=entry.rgb.hex, share=entry.share)
-        if guide.medium.monochrome:
-            item.instructions = describe_value(entry.lab.L, guide.medium)
-        elif recipes is not None:
-            recipe = recipes[index]
-            item.mix = [
-                MixStep(paint=c.paint.name, paint_id=c.paint.id, parts=c.parts)
-                for c in recipe.recipe.components
+        recipes = None
+        # A graphite pattern has nothing to mix. Running the palette solver anyway
+        # would spend five seconds producing pigment names that mean nothing with a
+        # pencil in your hand.
+        if include_recipes and not guide.medium.monochrome:
+            palette = [
+                paint
+                for paint in _resolve_palette(paints)
+                if paint.id not in guide.excluded_paint_ids
             ]
-            item.instructions = describe_mix(
-                [(c.paint.name, c.parts) for c in recipe.recipe.components], guide.medium
+            if not palette:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"No paints left once {guide.medium.name.lower()} rules are applied.",
+                )
+            recipes = recipes_for_pattern(
+                pattern,
+                palette,
+                max_components=(
+                    max_components if max_components is not None else guide.max_components
+                ),
             )
-            item.delta_e = round(recipe.recipe.delta_e, 2)
-            item.achievable = recipe.is_achievable
-        palette.append(item)
+
+        palette: list[PaletteColorOut] = []
+        for index, entry in enumerate(pattern.palette):
+            item = PaletteColorOut(number=entry.number, hex=entry.rgb.hex, share=entry.share)
+            if guide.medium.monochrome:
+                item.instructions = describe_value(entry.lab.L, guide.medium)
+            elif recipes is not None:
+                recipe = recipes[index]
+                item.mix = [
+                    MixStep(paint=c.paint.name, paint_id=c.paint.id, parts=c.parts)
+                    for c in recipe.recipe.components
+                ]
+                item.instructions = describe_mix(
+                    [(c.paint.name, c.parts) for c in recipe.recipe.components], guide.medium
+                )
+                item.delta_e = round(recipe.recipe.delta_e, 2)
+                item.achievable = recipe.is_achievable
+            palette.append(item)
 
     return PatternOut(
         width=pattern.width,
@@ -584,10 +641,12 @@ def grid(
     pencil marks once the reference is scaled onto A4. Pixels are no use at a
     drawing board, and converting in your head is where the proportions go wrong.
     """
-    loaded = _decode(_read_upload(image), max_dimension)
-    svg, plan = render_grid_svg(
-        loaded.rgb, divisions=divisions, labels=labels, diagonals=diagonals
-    )
+    data = _read_upload(image)
+    with _heavy_slot():
+        loaded = _decode(data, max_dimension)
+        svg, plan = render_grid_svg(
+            loaded.rgb, divisions=divisions, labels=labels, diagonals=diagonals
+        )
     return GridOut(
         columns=plan.columns,
         rows=plan.rows,
@@ -610,10 +669,11 @@ def critique(
     judgement — see `core/critique.py` for why that distinction is load-bearing
     rather than cautious.
     """
-    ref = _decode(_read_upload(reference), max_dimension)
-    att = _decode(_read_upload(attempt), max_dimension)
-
-    result = critique_attempt(ref.rgb, att.rgb)
+    ref_bytes, att_bytes = _read_upload(reference), _read_upload(attempt)
+    with _heavy_slot():
+        ref = _decode(ref_bytes, max_dimension)
+        att = _decode(att_bytes, max_dimension)
+        result = critique_attempt(ref.rgb, att.rgb)
     return CritiqueOut(
         message=result.message,
         next_step=result.suggested_next_step,
@@ -648,15 +708,15 @@ def shade_check(
     from ..core.color.space import rgb_to_lab
 
     data = _read_upload(image)
-    loaded = _decode(data, 1200)
-
-    shape = loaded.rgb.shape[:2]
-    result = check_shade(
-        loaded.rgb,
-        rgb_to_lab(target_rgb),
-        swatch_region=_to_pixel_box(_parse_box(swatch, "swatch"), shape),
-        white_region=_to_pixel_box(_parse_box(reference, "reference"), shape),
-    )
+    with _heavy_slot():
+        loaded = _decode(data, 1200)
+        shape = loaded.rgb.shape[:2]
+        result = check_shade(
+            loaded.rgb,
+            rgb_to_lab(target_rgb),
+            swatch_region=_to_pixel_box(_parse_box(swatch, "swatch"), shape),
+            white_region=_to_pixel_box(_parse_box(reference, "reference"), shape),
+        )
 
     return ShadeCheckOut(
         matched=result.is_match,
@@ -920,10 +980,11 @@ def add_attempt(
     except GalleryError as exc:
         raise _gallery_error(exc) from exc
 
-    attempt_bytes = _store_upload(image)
-    reference = _decode(reference_bytes, 900)
-    attempt = _decode(attempt_bytes, 900)
-    result = critique_attempt(reference.rgb, attempt.rgb)
+    with _heavy_slot():
+        attempt_bytes = _store_upload(image)
+        reference = _decode(reference_bytes, 900)
+        attempt = _decode(attempt_bytes, 900)
+        result = critique_attempt(reference.rgb, attempt.rgb)
 
     try:
         return _attempt_out(store.add_attempt(piece_id, attempt_bytes, result, note=note))
